@@ -33,7 +33,13 @@
 
   --radius: 0.5rem;
 }
-
+button {
+  cursor: pointer;
+}
+img {
+  width: auto;
+  height: auto;
+}
 @layer base {
   * {
     @apply border-border;
