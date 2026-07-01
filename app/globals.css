@@ -42,7 +42,7 @@ img {
 }
 @layer base {
   * {
-    @apply border-border;
+    @apply border-border antialiased;
   }
 
   body {
