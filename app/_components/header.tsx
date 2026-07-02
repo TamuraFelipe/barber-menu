@@ -13,8 +13,9 @@ const Header = () => {
           height={18}
           alt="Logo Barber Menu"
           loading="eager"
+          sizes="110px"
         />
-        <Button size="icon" variant="outline">
+        <Button size="lg" variant="outline">
           <MenuIcon />
         </Button>
       </CardContent>

@@ -1,3 +1,4 @@
+import PhoneItem from "@/app/_components/phone-item"
 import ServiceItem from "@/app/_components/service-item"
 import { Button, buttonVariants } from "@/app/_components/ui/button"
 import { db } from "@/app/_lib/prisma"
@@ -25,7 +26,7 @@ const BarbershopPage = async ({ params }: BarbershopPageProps) => {
     return NotFound()
   }
 
-  const formattedServices = barbershop?.BarbershopServices.map((service) => ({
+  const services = barbershop?.BarbershopServices.map((service) => ({
     ...service,
     price: service.price,
   }))
@@ -38,17 +39,17 @@ const BarbershopPage = async ({ params }: BarbershopPageProps) => {
           alt={barbershop?.name}
           fill
           className="object-cover"
-          sizes="110px"
+          sizes="600px"
         />
 
         <Link
           href="/"
-          className={`${buttonVariants({ variant: "secondary", size: "icon" })} absolute top-4 left-4`}
+          className={`${buttonVariants({ variant: "secondary", size: "lg" })} absolute top-4 left-4`}
         >
           <ChevronLeftIcon />
         </Link>
         <Button
-          size="icon"
+          size="lg"
           className="absolute top-4 right-4"
           variant="secondary"
         >
@@ -73,13 +74,19 @@ const BarbershopPage = async ({ params }: BarbershopPageProps) => {
         <p className="text-sm">{barbershop?.description}</p>
       </div>
 
-      <div className="space-y-3 p-5">
+      <div className="space-y-3 border-b border-solid p-5">
         <h2 className="text-xs font-bold text-gray-400 uppercase">Serviços</h2>
         <div className="space-y-3">
-          {formattedServices.map((service) => (
+          {services?.map((service) => (
             <ServiceItem key={service.id} service={service} />
           ))}
         </div>
+      </div>
+
+      <div className="space-y-3 p-5">
+        {barbershop.phones.map((phone) => (
+          <PhoneItem key={phone} phone={phone} />
+        ))}
       </div>
     </div>
   )

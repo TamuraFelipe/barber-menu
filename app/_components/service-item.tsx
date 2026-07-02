@@ -9,15 +9,15 @@ interface ServiceItemProps {
 }
 const ServiceItem = ({ service }: ServiceItemProps) => {
   return (
-    <Card>
-      <CardContent key={service.id} className="flex items-center gap-3">
+    <Card className="p-3">
+      <CardContent key={service.id} className="flex items-center gap-3 p-0">
         <div className="relative h-27.5 max-h-27.5 w-27.5 max-w-27.5">
           <Image
             src={service.imageUrl}
             alt={service.name}
             className="rounded-xl object-cover"
             fill
-            sizes="110px"
+            sizes="167px"
           />
         </div>
 
@@ -26,7 +26,7 @@ const ServiceItem = ({ service }: ServiceItemProps) => {
           <p className="text-muted-foreground text-sm">{service.description}</p>
 
           <div className="flex items-center justify-between">
-            <p className="text-primary text-sm font-semibold">
+            <p className="text-primary text-sm font-bold">
               {Intl.NumberFormat("pt-BR", {
                 style: "currency",
                 currency: "BRL",
@@ -34,7 +34,7 @@ const ServiceItem = ({ service }: ServiceItemProps) => {
             </p>
             <Link
               href={`/barbershops/${service.barbershopId}/services/${service.id}`}
-              className={`${buttonVariants({ variant: "secondary", size: "sm" })}`}
+              className={`${buttonVariants({ variant: "secondary", size: "default" })}`}
             >
               Agendar
             </Link>

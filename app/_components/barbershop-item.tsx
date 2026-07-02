@@ -11,7 +11,7 @@ interface BarbershopItemProps {
 }
 const BarbershopItem = ({ barbershop }: BarbershopItemProps) => {
   return (
-    <Card className="max-w-full min-w-full rounded-2xl p-0">
+    <Card className="max-w-full min-w-full p-0">
       <CardContent className="px-1 py-0 pt-1">
         <div className="relative h-39.75 w-full">
           <div className="absolute top-2 left-2 z-50">
@@ -26,11 +26,9 @@ const BarbershopItem = ({ barbershop }: BarbershopItemProps) => {
           <Image
             alt={barbershop.name}
             src={barbershop.imageUrl}
-            style={{
-              objectFit: "cover",
-            }}
+            className="rounded-lg object-cover"
             fill
-            className="rounded-2xl"
+            sizes="167px"
           />
         </div>
 

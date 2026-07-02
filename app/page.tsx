@@ -3,7 +3,6 @@ import Image from "next/image"
 import { SearchIcon } from "lucide-react"
 import { Button } from "./_components/ui/button"
 import { Input } from "./_components/ui/input"
-import { Card, CardContent } from "./_components/ui/card"
 import { quickSearchOptions } from "./_constants/search"
 import Header from "./_components/header"
 import BarbershopItem from "./_components/barbershop-item"
@@ -53,6 +52,8 @@ const Home = async () => {
             alt="Agende com os melhores barbeiros da cidade"
             fill
             className="rounded-xl object-cover"
+            sizes="600px"
+            priority
           />
         </div>
         {/*Agendamentos*/}
@@ -86,16 +87,6 @@ const Home = async () => {
           </div>
         </div>
       </div>
-
-      <footer>
-        <Card className="rounded-none">
-          <CardContent>
-            <p className="text-sm text-gray-400">
-              © 2023 Copyright - <span className="font-bold">Barber Menu</span>
-            </p>
-          </CardContent>
-        </Card>
-      </footer>
     </div>
   )
 }
