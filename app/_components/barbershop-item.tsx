@@ -1,9 +1,10 @@
 import { Barbershop } from "@prisma/client"
 import { Card, CardContent } from "./ui/card"
 import Image from "next/image"
-import { Button } from "./ui/button"
+import { buttonVariants } from "./ui/button"
 import { Badge } from "./ui/badge"
 import { StarIcon } from "lucide-react"
+import Link from "next/link"
 
 interface BarbershopItemProps {
   barbershop: Barbershop
@@ -40,13 +41,13 @@ const BarbershopItem = ({ barbershop }: BarbershopItemProps) => {
           <p className="overflow-hidden text-sm text-nowrap text-ellipsis text-gray-400">
             {barbershop.address}
           </p>
-          <Button
-            className="mt-3 w-full"
-            variant="secondary"
-            //onClick={handleBookingClick}
+
+          <Link
+            href={`/barbershops/${barbershop.id}`}
+            className={`${buttonVariants({ variant: "secondary" })} mt-3 w-full`}
           >
-            Reservar
-          </Button>
+            Agendar
+          </Link>
         </div>
       </CardContent>
     </Card>
