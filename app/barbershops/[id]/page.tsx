@@ -1,3 +1,4 @@
+import Container from "@/app/_components/container"
 import PhoneItem from "@/app/_components/phone-item"
 import ServiceItem from "@/app/_components/service-item"
 import SidebarSheet from "@/app/_components/sidebar-sheet"
@@ -34,14 +35,14 @@ const BarbershopPage = async ({ params }: BarbershopPageProps) => {
   }))
 
   return (
-    <div>
+    <Container>
       <div className="relative h-62.5 w-full">
         <Image
           src={barbershop?.imageUrl}
           alt={barbershop?.name}
           fill
           className="object-cover"
-          sizes="600px"
+          sizes="(min-width: 1280px) 1200px, (min-width: 1024px) 900px, 600px"
         />
 
         <Link
@@ -84,12 +85,20 @@ const BarbershopPage = async ({ params }: BarbershopPageProps) => {
         <p className="text-sm">{barbershop?.description}</p>
       </div>
 
-      <div className="space-y-3 border-b border-solid p-5">
-        <h2 className="text-xs font-bold text-gray-400 uppercase">Serviços</h2>
-        <div className="space-y-3">
-          {services?.map((service) => (
-            <ServiceItem key={service.id} service={service} />
-          ))}
+      <div className="mt-6">
+        <div className="mb-3 flex items-center gap-3 px-5">
+          <h2 className="shrink-0 text-xs font-bold tracking-wider text-gray-400 uppercase">
+            Serviços
+          </h2>
+
+          <div className="bg-border h-px flex-1" />
+        </div>
+        <div className="space-y-3 border-b border-solid p-5">
+          <div className="grid grid-cols-1 gap-4 space-y-3 md:grid-cols-2 md:space-y-0 xl:grid-cols-3 2xl:grid-cols-4">
+            {services?.map((service) => (
+              <ServiceItem key={service.id} service={service} />
+            ))}
+          </div>
         </div>
       </div>
 
@@ -98,7 +107,7 @@ const BarbershopPage = async ({ params }: BarbershopPageProps) => {
           <PhoneItem key={phone} phone={phone} />
         ))}
       </div>
-    </div>
+    </Container>
   )
 }
 
