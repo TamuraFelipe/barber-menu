@@ -44,8 +44,10 @@ img {
   * {
     @apply border-border antialiased;
   }
-
+  html {
+    @apply scroll-smooth h-full;
+  }
   body {
-    @apply bg-background text-foreground antialiased h-screen flex flex-col;
+    @apply bg-background text-foreground antialiased h-screen flex flex-col h-full;
   }
 }

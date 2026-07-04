@@ -1,8 +1,7 @@
 import { db } from "./_lib/prisma"
 import Image from "next/image"
-import { CircleAlertIcon, SearchIcon } from "lucide-react"
-import { Button } from "./_components/ui/button"
-import { Input } from "./_components/ui/input"
+import { CircleAlertIcon } from "lucide-react"
+import { buttonVariants } from "./_components/ui/button"
 import { quickSearchOptions } from "./_constants/search"
 import Header from "./_components/header"
 import BarbershopItem from "./_components/barbershop-item"
@@ -16,6 +15,8 @@ import {
   CarouselPrevious,
 } from "./_components/ui/carousel"
 import Container from "./_components/container"
+import Search from "./_components/search"
+import Link from "next/link"
 
 const Home = async () => {
   const barbershops = await db.barbershop.findMany({})
@@ -82,16 +83,17 @@ const Home = async () => {
             <p>{formattedDate}</p>
           </div>
           {/*Busca*/}
-          <div className="mt-6 flex items-center gap-2">
-            <Input placeholder="Faça sua busca..." />
-            <Button>
-              <SearchIcon />
-            </Button>
+          <div className="mt-6">
+            <Search />
           </div>
           {/*Busca Rápida*/}
           <div className="mt-6 flex gap-3 overflow-x-scroll [&::-webkit-scrollbar]:hidden">
             {quickSearchOptions.map((option) => (
-              <Button key={option.label} className="gap-2" variant="secondary">
+              <Link
+                key={option.label}
+                className={`${buttonVariants({ variant: "secondary" })} gap-2`}
+                href={`/barbershops?service=${option.label}`}
+              >
                 <Image
                   src={option.imageUrl}
                   width={16}
@@ -99,7 +101,7 @@ const Home = async () => {
                   alt={option.label}
                 />
                 {option.label}
-              </Button>
+              </Link>
             ))}
           </div>
           {/*Banner*/}
@@ -145,7 +147,7 @@ const Home = async () => {
                 </div>
               ) : (
                 <div className="flex items-center justify-center gap-2">
-                  <CircleAlertIcon />
+                  <CircleAlertIcon width={16} height={16} />
                   <p className="text-center text-sm text-gray-400">
                     Nenhum agendamento encontrado!
                   </p>
