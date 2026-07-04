@@ -3,11 +3,14 @@ import Image from "next/image"
 import Link from "next/link"
 import { buttonVariants } from "./ui/button"
 import { Card, CardContent } from "./ui/card"
+import { auth } from "@/auth"
 
 interface ServiceItemProps {
   service: BarbershopService
 }
-const ServiceItem = ({ service }: ServiceItemProps) => {
+const ServiceItem = async ({ service }: ServiceItemProps) => {
+  const session = await auth()
+
   return (
     <Card className="p-3">
       <CardContent key={service.id} className="flex items-center gap-3 p-0">
@@ -33,7 +36,11 @@ const ServiceItem = ({ service }: ServiceItemProps) => {
               }).format(Number(service.price))}
             </p>
             <Link
-              href={`/barbershops/${service.barbershopId}/services/${service.id}`}
+              href={
+                session?.user
+                  ? `/barbershops/${service.barbershopId}/services/${service.id}`
+                  : "/register"
+              }
               className={`${buttonVariants({ variant: "secondary", size: "default" })}`}
             >
               Agendar
