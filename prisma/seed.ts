@@ -1,16 +1,17 @@
-import { env } from "prisma/config";
-import { PrismaClient } from "@prisma/client";
-import { PrismaPg } from "@prisma/adapter-pg";
+import { env } from "prisma/config"
+import { PrismaClient } from "@prisma/client"
+import { PrismaPg } from "@prisma/adapter-pg"
+import bcrypt from "bcryptjs"
 
 const adapter = new PrismaPg({
   connectionString: env("DATABASE_URL"),
-});
+})
 
-const prisma = new PrismaClient({ adapter });
+const prisma = new PrismaClient({ adapter })
 
 async function seedDatabase() {
   try {
-    const images = [
+    /* const images = [
       "https://utfs.io/f/c97a2dc9-cf62-468b-a851-bfd2bdde775f-16p.png",
       "https://utfs.io/f/45331760-899c-4b4b-910e-e00babb6ed81-16q.png",
       "https://utfs.io/f/5832df58-cfd7-4b3f-b102-42b7e150ced2-16r.png",
@@ -32,7 +33,7 @@ async function seedDatabase() {
       "https://utfs.io/f/9f0847c2-d0b8-4738-a673-34ac2b9506ec-17r.png",
       "https://utfs.io/f/07842cfb-7b30-4fdc-accc-719618dfa1f2-17s.png",
       "https://utfs.io/f/0522fdaf-0357-4213-8f52-1d83c3dcb6cd-18e.png",
-    ];
+    ]
     // Nomes criativos para as barbearias
     const creativeNames = [
       "Barbearia Vintage",
@@ -45,7 +46,7 @@ async function seedDatabase() {
       "Aparência Impecável",
       "Estilo Urbano",
       "Estilo Clássico",
-    ];
+    ]
 
     // Endereços fictícios para as barbearias
     const addresses = [
@@ -59,7 +60,7 @@ async function seedDatabase() {
       "Praça da Aparência, 505",
       "Rua Urbana, 606",
       "Avenida Clássica, 707",
-    ];
+    ]
 
     const services = [
       {
@@ -104,11 +105,11 @@ async function seedDatabase() {
         imageUrl:
           "https://utfs.io/f/8a457cda-f768-411d-a737-cdb23ca6b9b5-b3pegf.png",
       },
-    ];
+    ]
 
     // Criar 10 barbearias com nomes e endereços fictícios
-    const barbershops = [];
-    for (let i = 0; i < 10; i++) {
+    const barbershops = [] */
+    /* for (let i = 0; i < 10; i++) {
       const name = creativeNames[i];
       const address = addresses[i];
       const imageUrl = images[i];
@@ -142,12 +143,36 @@ async function seedDatabase() {
 
       barbershops.push(barbershop);
     }
+ */
 
+    const hashedPassword1 = await bcrypt.hash("Teste123456", 12)
+    const hashedPassword2 = await bcrypt.hash("Teste123456", 12)
+    console.log("Criando usuários...")
+    await prisma.user.upsert({
+      where: { email: "tamura@email.com" },
+      update: {},
+      create: {
+        name: "Tamura",
+        email: "tamura@email.com",
+        password: hashedPassword1,
+      },
+    })
+    await prisma.user.upsert({
+      where: { email: "steffi@email.com" },
+      update: {},
+      create: {
+        name: "Steffi",
+        email: "steffi@email.com",
+        password: hashedPassword2,
+      },
+    })
     // Fechar a conexão com o banco de dados
-    await prisma.$disconnect();
+
+    console.log("Seed criado com sucesso!")
+    await prisma.$disconnect()
   } catch (error) {
-    console.error("Erro ao criar as barbearias:", error);
+    console.error("Erro ao criar as barbearias:", error)
   }
 }
 
-seedDatabase();
+seedDatabase()
