@@ -29,10 +29,12 @@ const BarbershopPage = async ({ params }: BarbershopPageProps) => {
     return NotFound()
   }
 
-  const services = barbershop?.BarbershopServices.map((service) => ({
-    ...service,
-    price: service.price,
-  }))
+  const services = barbershop.BarbershopServices.map((service) => {
+    return {
+      ...JSON.parse(JSON.stringify(service)), // Remove qualquer instância oculta de classes como o Decimal
+      price: Number(service.price), // Garante que vire um número puro JavaScript
+    }
+  })
 
   return (
     <Container>
@@ -96,7 +98,14 @@ const BarbershopPage = async ({ params }: BarbershopPageProps) => {
         <div className="space-y-3 border-b border-solid p-5">
           <div className="grid grid-cols-1 gap-4 space-y-3 md:grid-cols-2 md:space-y-0 xl:grid-cols-3 2xl:grid-cols-4">
             {services?.map((service) => (
-              <ServiceItem key={service.id} service={service} />
+              <ServiceItem
+                key={service.id}
+                service={service}
+                barbershop={{
+                  id: barbershop.id,
+                  name: barbershop.name,
+                }}
+              />
             ))}
           </div>
         </div>
