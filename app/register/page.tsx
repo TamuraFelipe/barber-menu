@@ -219,7 +219,7 @@ const Register = () => {
           <p className="text-muted-foreground text-sm">
             Já possui uma conta?{" "}
             <Link
-              href="/"
+              href="/login"
               className="text-primary inline-flex items-center gap-1 font-semibold transition-all hover:underline"
             >
               Fazer Login
