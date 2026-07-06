@@ -13,6 +13,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   //Ativa a estratégia de JWT necessária para login com credentials
   session: {
     strategy: "jwt",
+    maxAge: 8 * 60 * 60,
+    updateAge: 2 * 60 * 60,
   },
 
   providers: [
@@ -26,6 +28,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
+
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
           return null
