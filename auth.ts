@@ -65,6 +65,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     // 1. Salva a imagem do usuário que veio do banco de dados dentro do Token JWT
     async jwt({ token, user, trigger, session }) {
       if (user) {
+        token.id = user.id
+        token.name = user.name
+        token.email = user.email
         token.image = user.image
       }
       if (trigger === "update" && session) {
@@ -77,6 +80,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     // 2. Repassa a imagem armazenada no JWT diretamente para a Sessão que o front-end lê
     async session({ session, token }) {
       if (session.user) {
+        session.user.id = token.id as string
+        session.user.email = token.email as string
         session.user.name = token.name as string
         session.user.image = token.image as string
       }
