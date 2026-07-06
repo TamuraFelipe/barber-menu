@@ -1,7 +1,7 @@
 import { auth } from "@/auth"
 import { db } from "../_lib/prisma"
 
-const AgendamentosPage = async () => {
+const BookingsPage = async () => {
   const session = await auth()
 
   const bookings = await db.booking.findMany({
@@ -26,4 +26,4 @@ const AgendamentosPage = async () => {
   )
 }
 
-export default AgendamentosPage
+export default BookingsPage
