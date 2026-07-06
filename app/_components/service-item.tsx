@@ -1,6 +1,6 @@
 "use client"
 
-import { Barbershop, BarbershopService } from "@prisma/client"
+import { Barbershop, BarbershopService, Booking } from "@prisma/client"
 import Image from "next/image"
 import Link from "next/link"
 import { Button, buttonVariants } from "./ui/button"
@@ -13,12 +13,13 @@ import {
   SheetTrigger,
 } from "./ui/sheet"
 import { Calendar } from "./ui/calendar"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useSession } from "next-auth/react"
 import { ptBR } from "date-fns/locale"
 import { format, set } from "date-fns"
 import { createBooking } from "../_actions/create-booking"
 import { toast } from "sonner"
+import { getBookings } from "../_actions/get-bookings"
 
 interface ServiceItemProps {
   service: BarbershopService
@@ -36,6 +37,8 @@ const ServiceItem = ({ service, barbershop }: ServiceItemProps) => {
   const [selectedTime, setSelectedTime] = useState<string | undefined>(
     undefined,
   )
+  const [dayBookings, setDayBookings] = useState<Booking[]>([])
+
   const { data } = useSession()
 
   const handleDateSelect = (date: Date | undefined) => {
@@ -120,7 +123,24 @@ const ServiceItem = ({ service, barbershop }: ServiceItemProps) => {
       toast.error("Erro ao criar agendamento!")
     }
   }
+  const getTimeList = (bookings: Booking[]) => {
+    const timeList = slotsTime.filter((time) => {
+      const hour = Number(time.split(":")[0])
+      const minute = Number(time.split(":")[1])
+      if (
+        bookings.some(
+          (booking) =>
+            booking.date.getHours() === hour &&
+            booking.date.getMinutes() === minute,
+        )
+      ) {
+        return false
+      }
+      return true
+    })
 
+    return timeList
+  }
   const slotsTime = generateTimeSlots({
     startTime: "08:00",
     endTime: "20:00",
@@ -128,6 +148,19 @@ const ServiceItem = ({ service, barbershop }: ServiceItemProps) => {
     lunchStartTime: "12:00",
     lunchEndTime: "14:00",
   })
+
+  useEffect(() => {
+    const fetch = async () => {
+      if (!selectedDay) return
+      const bookings = await getBookings({
+        date: selectedDay,
+        serviceId: service.id,
+      })
+      setDayBookings(bookings)
+    }
+
+    fetch()
+  }, [selectedDay, service.id])
 
   return (
     <Card className="p-3">
@@ -220,7 +253,7 @@ const ServiceItem = ({ service, barbershop }: ServiceItemProps) => {
                         Horários disponíveis
                       </h3>
                       <div className="flex flex-wrap items-center gap-3">
-                        {slotsTime.map((time) => (
+                        {getTimeList(dayBookings).map((time) => (
                           <Button
                             variant={
                               selectedTime === time ? "default" : "outline"

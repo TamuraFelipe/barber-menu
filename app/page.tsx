@@ -17,6 +17,7 @@ import {
 import Container from "./_components/container"
 import Search from "./_components/search"
 import Link from "next/link"
+import { getMyBookings } from "./_actions/get-myBookings"
 
 const Home = async () => {
   const barbershops = await db.barbershop.findMany({})
@@ -33,41 +34,9 @@ const Home = async () => {
     month: "long",
   }).format(new Date())
 
-  const agendamentos = [
-    {
-      id: 1,
-      completed: true,
-      service: "Corte de cabelo",
-      barbershop: "Barbearia 1",
-      imageUrl:
-        "https://utfs.io/f/c97a2dc9-cf62-468b-a851-bfd2bdde775f-16p.png",
-      month: "Julho",
-      day: "04",
-      time: "10:00",
-    },
-    {
-      id: 2,
-      completed: false,
-      service: "Barba",
-      barbershop: "Barbearia 2",
-      imageUrl:
-        "https://utfs.io/f/c97a2dc9-cf62-468b-a851-bfd2bdde775f-16p.png",
-      month: "Julho",
-      day: "15",
-      time: "08:00",
-    },
-    {
-      id: 3,
-      completed: false,
-      service: "Hidratação",
-      barbershop: "Barbearia 3",
-      imageUrl:
-        "https://utfs.io/f/c97a2dc9-cf62-468b-a851-bfd2bdde775f-16p.png",
-      month: "Julho",
-      day: "30",
-      time: "14:00",
-    },
-  ]
+  const bookings = await getMyBookings({
+    userId: session?.user?.id as string,
+  })
 
   return (
     <div>
@@ -126,11 +95,11 @@ const Home = async () => {
 
                 <div className="bg-border h-px flex-1" />
               </div>
-              {agendamentos.length > 0 ? (
+              {bookings.length > 0 ? (
                 <div className="flex gap-4 overflow-x-auto px-6 py-0.5 [&::-webkit-scrollbar]:hidden">
                   <Carousel opts={{ align: "start" }} className="w-full">
                     <CarouselContent className="ml-0">
-                      {agendamentos.map((agendamento) => (
+                      {bookings.map((agendamento) => (
                         <CarouselItem
                           key={agendamento.id}
                           className="px-1 md:basis-1/2 lg:basis-1/3 xl:basis-1/4 2xl:basis-1/4"
@@ -141,8 +110,8 @@ const Home = async () => {
                         </CarouselItem>
                       ))}
                     </CarouselContent>
-                    <CarouselPrevious className="-left-6 h-20" />
-                    <CarouselNext className="-right-6 h-20" />
+                    <CarouselPrevious className="-left-6" />
+                    <CarouselNext className="-right-6" />
                   </Carousel>
                 </div>
               ) : (
@@ -182,8 +151,8 @@ const Home = async () => {
                     </CarouselItem>
                   ))}
                 </CarouselContent>
-                <CarouselPrevious className="-left-6 h-20" />
-                <CarouselNext className="-right-6 h-20" />
+                <CarouselPrevious className="-left-6" />
+                <CarouselNext className="-right-6" />
               </Carousel>
             </div>
           </div>
@@ -214,8 +183,8 @@ const Home = async () => {
                     </CarouselItem>
                   ))}
                 </CarouselContent>
-                <CarouselPrevious className="-left-6 h-20" />
-                <CarouselNext className="-right-6 h-20" />
+                <CarouselPrevious className="-left-6" />
+                <CarouselNext className="-right-6" />
               </Carousel>
             </div>
           </div>
