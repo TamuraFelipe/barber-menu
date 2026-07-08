@@ -42,14 +42,16 @@ const BarbershopsPage = async ({ searchParams }: BarbershopsPageProps) => {
   })
   return (
     <>
-      <Header />
+      <Header>
+        <Search />
+      </Header>
       <Container>
-        <div className="mt-6">
+        <div className="mt-6 lg:hidden">
           <Search />
         </div>
         <div className="mt-6">
           <div className="mb-3 flex items-center gap-3">
-            <h2 className="shrink-0 text-xs font-bold tracking-wider text-gray-400 uppercase">
+            <h2 className="lg:font-bol shrink-0 text-xs font-bold tracking-wider text-gray-400 uppercase lg:text-xl lg:text-white lg:capitalize">
               {`Resultado para "${title || service}"`}
             </h2>
           </div>

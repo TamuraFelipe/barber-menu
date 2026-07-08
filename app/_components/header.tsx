@@ -1,17 +1,39 @@
+"use client"
 import { Card, CardContent } from "@/app/_components/ui/card"
 import Image from "next/image"
-import { Button } from "./ui/button"
-import { MenuIcon } from "lucide-react"
+import { Button, buttonVariants } from "./ui/button"
+import {
+  CalendarIcon,
+  LogInIcon,
+  LogOutIcon,
+  MenuIcon,
+  UserIcon,
+} from "lucide-react"
 import { Sheet, SheetTrigger } from "./ui/sheet"
 import SidebarSheet from "./sidebar-sheet"
 import Container from "./container"
 import Link from "next/link"
+import { Avatar, AvatarImage } from "./ui/avatar"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "./ui/dropdown-menu"
+import { signOut, useSession } from "next-auth/react"
 
-const Header = () => {
+interface HeaderProps {
+  children?: React.ReactNode
+}
+
+const Header = ({ children }: HeaderProps) => {
+  const { data } = useSession()
   return (
     <Card className="rounded-none p-0">
       <CardContent className="px-0">
-        <Container className="flex items-center justify-between py-5">
+        <Container className="flex items-center justify-between py-5 lg:gap-10">
           <Link href="/">
             <Image
               src="/logo.png"
@@ -23,17 +45,91 @@ const Header = () => {
             />
           </Link>
 
-          <Sheet>
-            <SheetTrigger
-              render={
-                <Button size="lg" variant="outline">
-                  <MenuIcon />
-                </Button>
-              }
-            ></SheetTrigger>
+          <div className="hidden w-full lg:block">{children}</div>
+          <div className="hidden items-center gap-6 lg:flex">
+            {data?.user ? (
+              <>
+                <Link
+                  href="/bookings"
+                  className={`${buttonVariants({ variant: "ghost" })} hidden justify-start lg:flex`}
+                >
+                  <CalendarIcon size={18} />
+                  Agendamentos
+                </Link>
+                <div className="flex items-center gap-6">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger
+                      render={
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="flex w-full items-center gap-2 rounded-full"
+                        >
+                          <Avatar className="border-primary border-2">
+                            <AvatarImage
+                              src={
+                                data?.user?.image || "/avatar-placeholder.png"
+                              }
+                            />
+                          </Avatar>
+                          <div>
+                            <p className="text-base font-bold whitespace-nowrap">
+                              {data?.user?.name}
+                            </p>
+                          </div>
+                        </Button>
+                      }
+                    />
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuGroup>
+                        <DropdownMenuItem>
+                          <Link
+                            href="/user/update"
+                            className="flex items-center gap-1.5"
+                          >
+                            <UserIcon />
+                            Perfil
+                          </Link>
+                        </DropdownMenuItem>
+                      </DropdownMenuGroup>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem>
+                        <button
+                          onClick={() => signOut()}
+                          className="flex w-full items-center gap-1.5"
+                        >
+                          <LogOutIcon />
+                          Sair
+                        </button>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </>
+            ) : (
+              <Link
+                href="/login"
+                className={`${buttonVariants({ variant: "default" })} hidden justify-start lg:flex`}
+              >
+                <LogInIcon size={18} />
+                Entrar
+              </Link>
+            )}
+          </div>
 
-            <SidebarSheet />
-          </Sheet>
+          <div className="lg:hidden">
+            <Sheet>
+              <SheetTrigger
+                render={
+                  <Button size="lg" variant="outline">
+                    <MenuIcon />
+                  </Button>
+                }
+              ></SheetTrigger>
+
+              <SidebarSheet />
+            </Sheet>
+          </div>
         </Container>
       </CardContent>
     </Card>

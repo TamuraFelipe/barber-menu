@@ -31,7 +31,7 @@ const Search = () => {
   return (
     <form
       onSubmit={form.handleSubmit(onSubmit)}
-      className="flex flex-col items-start gap-2"
+      className="flex w-full flex-col items-start gap-2"
     >
       <div className="flex w-full items-center gap-2">
         <Input placeholder="Faça sua busca..." {...form.register("title")} />

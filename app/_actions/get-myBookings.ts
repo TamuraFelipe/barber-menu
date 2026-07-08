@@ -7,7 +7,8 @@ interface GetMyBookingsProps {
 }
 
 export const getMyBookings = async ({ userId }: GetMyBookingsProps) => {
-  const bookings = db.booking.findMany({
+  // 1. Adicionado o await para esperar a resposta do banco
+  const bookings = await db.booking.findMany({
     where: {
       userId,
     },
@@ -17,12 +18,16 @@ export const getMyBookings = async ({ userId }: GetMyBookingsProps) => {
       service: {
         select: {
           name: true,
+          price: true,
         },
       },
       barbershop: {
         select: {
           name: true,
           imageUrl: true,
+          address: true,
+          description: true,
+          phones: true,
         },
       },
     },
@@ -31,5 +36,13 @@ export const getMyBookings = async ({ userId }: GetMyBookingsProps) => {
     },
   })
 
-  return bookings
+  // 2. Mapeamos os agendamentos para transformar o Decimal do service em number
+  return bookings.map((booking) => ({
+    ...booking,
+    service: {
+      ...booking.service,
+      // O método .toNumber() converte o Decimal do Prisma em número puro do JS
+      price: booking.service.price.toNumber(),
+    },
+  }))
 }

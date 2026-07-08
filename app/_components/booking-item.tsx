@@ -17,6 +17,8 @@ interface Booking {
 
 interface BookingItemProps {
   agendamento: Booking
+  isActive: boolean
+  onClick: () => void
 }
 const BookingItem = ({ agendamento }: BookingItemProps) => {
   const compareDate = (date: Date) => {
