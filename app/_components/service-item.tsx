@@ -20,24 +20,39 @@ import { format, set } from "date-fns"
 import { createBooking } from "../_actions/create-booking"
 import { toast } from "sonner"
 import { getBookings } from "../_actions/get-bookings"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "./ui/alert-dialog"
 
 interface ServiceItemProps {
   service: BarbershopService
   barbershop: Pick<Barbershop, "id" | "name">
 }
+
 interface GenerateTimeSlotsProps {
-  startTime: string // ex: "08:00"
-  endTime: string // ex: "18:00"
-  intervalInMinutes: number // ex: 45
-  lunchStartTime?: string // ex: "12:00" (Opcional)
-  lunchEndTime?: string // ex: "13:00" (Opcional)
+  startTime: string
+  endTime: string
+  intervalInMinutes: number
+  lunchStartTime?: string
+  lunchEndTime?: string
 }
+
 const ServiceItem = ({ service, barbershop }: ServiceItemProps) => {
   const [selectedDay, setSelectedDay] = useState<Date | undefined>(undefined)
   const [selectedTime, setSelectedTime] = useState<string | undefined>(
     undefined,
   )
   const [dayBookings, setDayBookings] = useState<Booking[]>([])
+  const [loading, setLoading] = useState(false)
+  const [openSheet, setOpenSheet] = useState(false)
+  const [openAlert, setOpenAlert] = useState(false) // Estado correto para o Alert
 
   const { data } = useSession()
 
@@ -45,9 +60,20 @@ const ServiceItem = ({ service, barbershop }: ServiceItemProps) => {
     setSelectedDay(date)
     setSelectedTime(undefined)
   }
+
   const handleTimeSelect = (time: string | undefined) => {
     setSelectedTime(time)
   }
+
+  // Função para limpar os dados quando fechar o Sheet manualmente (no X ou fora)
+  const handleSheetOpenChange = (isOpen: boolean) => {
+    setOpenSheet(isOpen)
+    if (!isOpen) {
+      setSelectedDay(undefined)
+      setSelectedTime(undefined)
+    }
+  }
+
   const generateTimeSlots = ({
     startTime,
     endTime,
@@ -56,14 +82,11 @@ const ServiceItem = ({ service, barbershop }: ServiceItemProps) => {
     lunchEndTime,
   }: GenerateTimeSlotsProps): string[] => {
     const slots: string[] = []
-
-    // 1. Converter horários principais para minutos totais
     const [startHours, startMinutes] = startTime.split(":").map(Number)
     const [endHours, endMinutes] = endTime.split(":").map(Number)
     let currentMinutes = startHours * 60 + startMinutes
     const finalMinutes = endHours * 60 + endMinutes
 
-    // 2. Converter horários de almoço (se existirem) para minutos totais
     let lunchStartMinutes = null
     let lunchEndMinutes = null
 
@@ -74,23 +97,19 @@ const ServiceItem = ({ service, barbershop }: ServiceItemProps) => {
       lunchEndMinutes = lEndH * 60 + lEndM
     }
 
-    // 3. Loop de geração
     while (currentMinutes <= finalMinutes) {
-      // Verificação: O horário atual está dentro do intervalo de almoço?
       if (
         lunchStartMinutes !== null &&
         lunchEndMinutes !== null &&
         currentMinutes >= lunchStartMinutes &&
         currentMinutes < lunchEndMinutes
       ) {
-        // Pula direto para o final do almoço para continuar gerando dali
         currentMinutes = lunchEndMinutes
         continue
       }
 
       const hours = Math.floor(currentMinutes / 60)
       const minutes = currentMinutes % 60
-
       const formattedTime = `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`
       slots.push(formattedTime)
 
@@ -99,48 +118,60 @@ const ServiceItem = ({ service, barbershop }: ServiceItemProps) => {
 
     return slots
   }
+
   const handleCreateBooking = async () => {
     try {
       if (!selectedDay || !selectedTime) return
 
-      const hour = selectedTime?.split(":")[0]
-      const minute = selectedTime?.split(":")[1]
+      setLoading(true)
+      const hour = selectedTime.split(":")[0]
+      const minute = selectedTime.split(":")[1]
       const newData = set(selectedDay, {
         hours: Number(hour),
         minutes: Number(minute),
       })
 
-      await createBooking({
+      const res = await createBooking({
         serviceId: service.id,
         userId: data?.user?.id as string,
         barbershopId: barbershop.id,
         date: newData,
       })
 
+      setLoading(false)
+
+      if (!res) {
+        toast.error("Erro ao criar agendamento!")
+        setOpenAlert(false)
+        return
+      }
+
       toast.success("Agendamento criado com sucesso!")
+
+      // 👇 Fecha os dois modais e limpa os estados do agendamento antigo
+      setOpenAlert(false)
+      setOpenSheet(false)
+      setSelectedDay(undefined)
+      setSelectedTime(undefined)
     } catch (error) {
+      setLoading(false)
       console.log(error)
       toast.error("Erro ao criar agendamento!")
     }
   }
+
   const getTimeList = (bookings: Booking[]) => {
-    const timeList = slotsTime.filter((time) => {
+    return slotsTime.filter((time) => {
       const hour = Number(time.split(":")[0])
       const minute = Number(time.split(":")[1])
-      if (
-        bookings.some(
-          (booking) =>
-            booking.date.getHours() === hour &&
-            booking.date.getMinutes() === minute,
-        )
-      ) {
-        return false
-      }
-      return true
+      return !bookings.some(
+        (booking) =>
+          booking.date.getHours() === hour &&
+          booking.date.getMinutes() === minute,
+      )
     })
-
-    return timeList
   }
+
   const slotsTime = generateTimeSlots({
     startTime: "08:00",
     endTime: "20:00",
@@ -158,7 +189,6 @@ const ServiceItem = ({ service, barbershop }: ServiceItemProps) => {
       })
       setDayBookings(bookings)
     }
-
     fetch()
   }, [selectedDay, service.id])
 
@@ -194,7 +224,7 @@ const ServiceItem = ({ service, barbershop }: ServiceItemProps) => {
                 Agendar
               </Link>
             ) : (
-              <Sheet>
+              <Sheet open={openSheet} onOpenChange={handleSheetOpenChange}>
                 <SheetTrigger
                   className={`${buttonVariants({ variant: "secondary", size: "default" })}`}
                 >
@@ -230,12 +260,9 @@ const ServiceItem = ({ service, barbershop }: ServiceItemProps) => {
                         day: "h-10 w-full p-0 font-normal aria-selected:opacity-100 flex items-center justify-center rounded-md",
                         day_button: [
                           "w-full h-full flex items-center justify-center rounded-md transition-colors",
-
                           "data-[selected]:bg-primary data-[selected]:text-primary-foreground data-[selected]:opacity-100",
-
                           "hover:!bg-primary hover:!text-primary-foreground hover:opacity-100",
                         ].join(" "),
-
                         button_previous:
                           "w-8 h-8 p-0 opacity-50 hover:opacity-100 flex items-center justify-center z-50 absolute left-0 top-0",
                         button_next:
@@ -250,7 +277,7 @@ const ServiceItem = ({ service, barbershop }: ServiceItemProps) => {
                   {selectedDay && (
                     <div className="border-b border-solid px-5 py-5">
                       <h3 className="mb-5 text-sm font-semibold">
-                        Horários disponíveis
+                        Horários disponíveis
                       </h3>
                       <div className="flex flex-wrap items-center gap-3">
                         {getTimeList(dayBookings).map((time) => (
@@ -303,7 +330,36 @@ const ServiceItem = ({ service, barbershop }: ServiceItemProps) => {
                       </Card>
 
                       <SheetFooter className="px-0 py-5">
-                        <Button onClick={handleCreateBooking}>Confirmar</Button>
+                        {/* 👇 AlertDialog mantendo o seu render original */}
+                        <AlertDialog
+                          open={openAlert}
+                          onOpenChange={setOpenAlert}
+                        >
+                          <AlertDialogTrigger
+                            render={
+                              <Button variant="default">Confirmar</Button>
+                            }
+                          />
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>
+                                Confirmar agendamento?
+                              </AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Você pode ver seu agendamentos na aba
+                                Agendamentos após confirmar!.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={handleCreateBooking}
+                              disabled={loading}
+                            >
+                              Confirmar
+                            </AlertDialogAction>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </SheetFooter>
                     </div>
                   )}

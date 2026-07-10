@@ -11,8 +11,14 @@ interface CreateBookingProps {
 }
 
 export const createBooking = async (params: CreateBookingProps) => {
-  await db.booking.create({
+  const booking = await db.booking.create({
     data: params,
   })
+
+  if (!booking) {
+    return false
+  }
+
   revalidatePath("/barbershops/[id]")
+  return booking
 }
