@@ -1,40 +1,27 @@
-import { addHours, format, isPast } from "date-fns"
+import { format } from "date-fns"
 import { Avatar, AvatarImage } from "./ui/avatar"
 import { Badge } from "./ui/badge"
 import { Card, CardContent } from "./ui/card"
 import { ptBR } from "date-fns/locale"
-
-interface Booking {
-  date: Date
-  barbershop: {
-    name: string
-    imageUrl: string
-  }
-  service: {
-    name: string
-  }
-}
+import { Prisma } from "@prisma/client"
+import { compareDateTime } from "../_helper/compareDateTime"
 
 interface BookingItemProps {
-  agendamento: Booking
-  isActive: boolean
-  onClick: () => void
+  agendamento: Prisma.BookingGetPayload<{
+    include: { barbershop: true; service: true }
+  }>
 }
-const BookingItem = ({ agendamento }: BookingItemProps) => {
-  const compareDate = (date: Date) => {
-    const endDate = addHours(date, 1)
 
-    return isPast(endDate)
-  }
+const BookingItem = ({ agendamento }: BookingItemProps) => {
   return (
     <>
       <Card className="p-0">
         <CardContent className="flex justify-between p-0">
           <div className="flex flex-col gap-2 py-5 pl-5">
             <Badge
-              className={`${compareDate(agendamento.date) ? "bg-green-400" : ""}`}
+              className={`${compareDateTime(agendamento.date) ? "bg-green-400" : ""}`}
             >
-              {compareDate(agendamento.date) ? "Finalizado" : "Agendado"}
+              {compareDateTime(agendamento.date) ? "Finalizado" : "Agendado"}
             </Badge>
             <h3 className="font-semibold">{agendamento.service.name}</h3>
             <div className="flex items-center gap-2">

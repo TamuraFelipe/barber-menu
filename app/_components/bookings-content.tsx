@@ -21,40 +21,40 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "./ui/alert-dialog"
+import { Prisma } from "@prisma/client"
+import { filterRecentBookings } from "../_helper/bookingsFilter"
 
-interface Booking {
-  id: string
-  date: Date
-  barbershop: {
-    name: string
-    imageUrl: string
-    address?: string
-    description?: string
-    phones?: string[]
-  }
-  service: {
-    name: string
+// 1. Mantemos o seu tipo original gerado pelo Prisma
+type BookingItemFromPrisma = Prisma.BookingGetPayload<{
+  include: { barbershop: true; service: true }
+}>
+// 2. Criamos o tipo final substituindo o Decimal por number dentro de service
+export type BookingItem = Omit<BookingItemFromPrisma, "service"> & {
+  service: Omit<BookingItemFromPrisma["service"], "price"> & {
     price: number
   }
 }
-
+// 3. Suas props agora utilizam o tipo corrigido!
 interface BookingsContentProps {
-  confirmados: Booking[]
-  finalizados: Booking[]
+  confirmados: BookingItem[]
+  finalizados: BookingItem[]
 }
 
-const BookingsContent = ({ confirmados }: BookingsContentProps) => {
+const BookingsContent = ({
+  confirmados,
+  finalizados,
+}: BookingsContentProps) => {
   const [open, setOpen] = useState(false)
   const [openDetail, setOpenDetail] = useState(false)
   const [isDesktop, setIsDesktop] = useState(false)
-  const [booking, setBooking] = useState<Booking | undefined>(undefined)
+  const [booking, setBooking] = useState<BookingItem | null>(null)
   const [loading, setLoading] = useState(false)
 
   // 👇 Estados de alerta separados para não conflitar mobile e desktop
   const [openMobileAlert, setOpenMobileAlert] = useState(false)
   const [openDesktopAlert, setOpenDesktopAlert] = useState(false)
 
-  const handleOpenDetailClick = (booking: Booking) => {
+  const handleOpenDetailClick = (booking: BookingItem) => {
     if (!isDesktop) {
       setOpen(true)
       setBooking(booking)
@@ -80,7 +80,7 @@ const BookingsContent = ({ confirmados }: BookingsContentProps) => {
         setOpen(false)
       }
 
-      setBooking(undefined)
+      setBooking(null)
     } catch (error) {
       console.error(error)
       toast.error("Erro ao cancelar o agendamento.")
@@ -398,6 +398,62 @@ const BookingsContent = ({ confirmados }: BookingsContentProps) => {
                   </div>
                 </CardContent>
               </Card>
+            )}
+          </div>
+
+          <div>
+            <h2 className="my-3 text-sm font-bold tracking-wider text-gray-400 uppercase">
+              Finalizados
+            </h2>
+            {finalizados.length > 0 ? (
+              <div className="flex flex-col gap-3 space-y-3">
+                {filterRecentBookings(finalizados).map((bookingItem, index) => (
+                  <button
+                    key={index}
+                    onClick={() => handleOpenDetailClick(bookingItem)}
+                  >
+                    <Card className="p-0">
+                      <CardContent className="p-0">
+                        <div className="flex items-center justify-between">
+                          <div className="flex flex-col items-start gap-2 py-5 pl-5">
+                            <Badge className="bg-green-400">Finalizado</Badge>
+                            <h3 className="font-semibold">
+                              {bookingItem.service.name}
+                            </h3>
+                            <div className="flex items-center gap-2">
+                              <Avatar className="h-6 w-6">
+                                <AvatarImage
+                                  src={bookingItem.barbershop.imageUrl}
+                                />
+                              </Avatar>
+                              <p className="text-sm">
+                                {bookingItem.barbershop.name}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex flex-col items-center justify-center border-l-2 border-solid px-5">
+                            <p className="tex-sm capitalize">
+                              {format(bookingItem.date, "MMMM", {
+                                locale: ptBR,
+                              })}
+                            </p>
+                            <p className="text-3xl">
+                              {format(bookingItem.date, "dd")}
+                            </p>
+                            <p className="text-sm">
+                              {format(bookingItem.date, "HH:mm")}
+                            </p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-400">
+                Nenhuma reserva finalizada
+              </p>
             )}
           </div>
         </div>

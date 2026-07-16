@@ -2,23 +2,37 @@ import { auth } from "@/auth"
 import Container from "../_components/container"
 import Header from "../_components/header"
 import Search from "../_components/search"
-import { getMyBookings } from "../_actions/get-myBookings"
 import BookingsContent from "../_components/bookings-content"
+import { db } from "../_lib/prisma"
+import { compareDateTime } from "../_helper/compareDateTime"
 
 const BookingsPage = async () => {
   const session = await auth()
 
-  const bookings = await getMyBookings({
-    userId: session?.user?.id as string,
+  const bookings = await db.booking.findMany({
+    where: {
+      userId: session?.user?.id as string,
+    },
+    include: {
+      service: true,
+      barbershop: true,
+    },
   })
 
-  const agora = new Date()
+  const serializedBookings = bookings.map((booking) => ({
+    ...booking,
+    service: {
+      ...booking.service,
+      price: Number(booking.service.price),
+    },
+  }))
 
-  const confirmados = bookings.filter(
-    (booking) => new Date(booking.date) >= agora,
+  const confirmados = serializedBookings.filter(
+    (booking) => !compareDateTime(new Date(booking.date)),
   )
-  const finalizados = bookings.filter(
-    (booking) => new Date(booking.date) < agora,
+
+  const finalizados = serializedBookings.filter((booking) =>
+    compareDateTime(new Date(booking.date)),
   )
 
   return (

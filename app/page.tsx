@@ -17,7 +17,7 @@ import {
 import Container from "./_components/container"
 import Search from "./_components/search"
 import Link from "next/link"
-import { getMyBookings } from "./_actions/get-myBookings"
+import { filterRecentBookings } from "./_helper/bookingsFilter"
 
 const Home = async () => {
   const barbershops = await db.barbershop.findMany({})
@@ -39,10 +39,16 @@ const Home = async () => {
     month: "long",
   }).format(new Date())
 
-  const bookings = await getMyBookings({
-    userId: session?.user?.id as string,
+  const bookings = await db.booking.findMany({
+    where: {
+      userId: session?.user?.id,
+    },
+    include: {
+      barbershop: true,
+      service: true,
+    },
   })
-
+  const bookingsFiltrados = filterRecentBookings(bookings)
   return (
     <div>
       <Header />
@@ -90,11 +96,11 @@ const Home = async () => {
 
                     <div className="bg-border h-px flex-1" />
                   </div>
-                  {bookings.length > 0 ? (
+                  {bookingsFiltrados.length > 0 ? (
                     <div className="flex gap-4 overflow-x-auto px-6 py-0.5 [&::-webkit-scrollbar]:hidden">
                       <Carousel opts={{ align: "start" }} className="w-full">
                         <CarouselContent className="ml-0">
-                          {bookings.map((agendamento) => (
+                          {bookingsFiltrados.map((agendamento) => (
                             <CarouselItem
                               key={agendamento.id}
                               className="px-1 md:basis-1/2 lg:basis-1/1 xl:basis-1/2 2xl:basis-1/2"

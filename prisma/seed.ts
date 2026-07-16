@@ -33,9 +33,9 @@ async function seedDatabase() {
       "https://utfs.io/f/9f0847c2-d0b8-4738-a673-34ac2b9506ec-17r.png",
       "https://utfs.io/f/07842cfb-7b30-4fdc-accc-719618dfa1f2-17s.png",
       "https://utfs.io/f/0522fdaf-0357-4213-8f52-1d83c3dcb6cd-18e.png",
-    ]
+    ] */
     // Nomes criativos para as barbearias
-    const creativeNames = [
+    /* const creativeNames = [
       "Barbearia Vintage",
       "Corte & Estilo",
       "Barba & Navalha",
@@ -47,9 +47,9 @@ async function seedDatabase() {
       "Estilo Urbano",
       "Estilo Clássico",
     ]
-
+ */
     // Endereços fictícios para as barbearias
-    const addresses = [
+    /* const addresses = [
       "Rua da Barbearia, 123",
       "Avenida dos Cortes, 456",
       "Praça da Barba, 789",
@@ -60,9 +60,9 @@ async function seedDatabase() {
       "Praça da Aparência, 505",
       "Rua Urbana, 606",
       "Avenida Clássica, 707",
-    ]
+    ] */
 
-    const services = [
+    /* const services = [
       {
         name: "Corte de Cabelo",
         description: "Estilo personalizado com as últimas tendências.",
@@ -105,10 +105,11 @@ async function seedDatabase() {
         imageUrl:
           "https://utfs.io/f/8a457cda-f768-411d-a737-cdb23ca6b9b5-b3pegf.png",
       },
-    ]
+    ] */
 
     // Criar 10 barbearias com nomes e endereços fictícios
-    const barbershops = [] */
+    /* const barbershops = []  */
+
     /* for (let i = 0; i < 10; i++) {
       const name = creativeNames[i];
       const address = addresses[i];
@@ -145,27 +146,32 @@ async function seedDatabase() {
     }
  */
 
-    const hashedPassword1 = await bcrypt.hash("Teste123456", 12)
-    const hashedPassword2 = await bcrypt.hash("Teste123456", 12)
-    console.log("Criando usuários...")
-    await prisma.user.upsert({
-      where: { email: "tamura@email.com" },
-      update: {},
-      create: {
-        name: "Tamura",
-        email: "tamura@email.com",
-        password: hashedPassword1,
-      },
-    })
-    await prisma.user.upsert({
-      where: { email: "steffi@email.com" },
-      update: {},
-      create: {
-        name: "Steffi",
-        email: "steffi@email.com",
-        password: hashedPassword2,
-      },
-    })
+    const adminUsers = [
+      { name: "Machado & Tesoura", email: "barbershop6@example.com" },
+      { name: "Cabelo & Cia.", email: "barbershop5@example.com" },
+      { name: "Estilo Urbano", email: "barbershop9@example.com" },
+      { name: "Barbearia Elegance", email: "barbershop7@example.com" },
+      { name: "The Dapper Den", email: "barbershop4@example.com" },
+      { name: "Estilo Clássico", email: "barbershop10@example.com" },
+      { name: "Barba & Navalha", email: "barbershop3@example.com" },
+      { name: "Corte & Estilo", email: "barbershop2@example.com" },
+      { name: "Barbearia Vintage", email: "barbershop1@example.com" },
+      { name: "Aparência Impecável", email: "barbershop8@example.com" },
+    ]
+
+    const hashedPassword = await bcrypt.hash("Barber2123", 12)
+
+    for (const user of adminUsers) {
+      await prisma.user.create({
+        data: {
+          name: user.name,
+          email: user.email,
+          password: hashedPassword,
+          role: "BARBER",
+        },
+      })
+    }
+
     // Fechar a conexão com o banco de dados
 
     console.log("Seed criado com sucesso!")

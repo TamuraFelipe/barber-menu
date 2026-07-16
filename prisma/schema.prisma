@@ -18,6 +18,12 @@ datasource db {
  * }
  */
 
+enum Role {
+  USER
+  BARBER
+  ADMIN
+}
+
 model User {
   id       String  @id @default(cuid())
   name     String?
@@ -26,11 +32,13 @@ model User {
 
   emailVerified DateTime?
   image         String?
+  role          Role            @default(USER)
   accounts      Account[]
   sessions      Session[]
   bookings      Booking[]
   // Optional for WebAuthn support
   Authenticator Authenticator[]
+  barbershop    Barbershop?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -101,9 +109,11 @@ model Barbershop {
   imageUrl    String
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  userId      String  @unique
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   BarbershopServices BarbershopService[]
-  Bookings Booking[]
+  Bookings           Booking[]
 }
 
 model BarbershopService {
@@ -119,15 +129,15 @@ model BarbershopService {
 }
 
 model Booking {
-  id        String   @id @default(uuid())
-  serviceId String
-  userId    String
+  id           String   @id @default(uuid())
+  serviceId    String
+  userId       String
   barbershopId String
-  date      DateTime
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  date         DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  user    User              @relation(fields: [userId], references: [id])
-  service BarbershopService @relation(fields: [serviceId], references: [id])
-  barbershop Barbershop @relation(fields: [barbershopId], references: [id])
+  user       User              @relation(fields: [userId], references: [id])
+  service    BarbershopService @relation(fields: [serviceId], references: [id])
+  barbershop Barbershop        @relation(fields: [barbershopId], references: [id])
 }
