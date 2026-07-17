@@ -30,6 +30,13 @@ enum BarbershopStatus {
   INACTIVE
 }
 
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  FINISHED
+  CANCELED
+}
+
 model User {
   id       String  @id @default(cuid())
   name     String?
@@ -45,6 +52,7 @@ model User {
   // Optional for WebAuthn support
   Authenticator Authenticator[]
   barbershop    Barbershop?
+  review        Review[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -121,6 +129,7 @@ model Barbershop {
 
   BarbershopServices BarbershopService[]
   Bookings           Booking[]
+  review             Review[]
 }
 
 model BarbershopService {
@@ -136,15 +145,35 @@ model BarbershopService {
 }
 
 model Booking {
-  id           String   @id @default(uuid())
+  id           String        @id @default(uuid())
   serviceId    String
   userId       String
   barbershopId String
   date         DateTime
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  status       BookingStatus @default(CONFIRMED)
 
   user       User              @relation(fields: [userId], references: [id])
   service    BarbershopService @relation(fields: [serviceId], references: [id])
   barbershop Barbershop        @relation(fields: [barbershopId], references: [id])
+
+  review Review?
+}
+
+model Review {
+  id        String   @id @default(uuid())
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now())
+
+  barbershopId String
+  barbershop   Barbershop @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // ADICIONE ESTAS DUAS LINHAS ABAIXO:
+  bookingId String  @unique // @unique garante que aquele agendamento só receba 1 nota
+  booking   Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 }
