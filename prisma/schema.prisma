@@ -24,6 +24,12 @@ enum Role {
   ADMIN
 }
 
+enum BarbershopStatus {
+  PENDING
+  ACTIVE
+  INACTIVE
+}
+
 model User {
   id       String  @id @default(cuid())
   name     String?
@@ -100,17 +106,18 @@ model Authenticator {
 }
 
 model Barbershop {
-  id          String   @id @default(uuid())
+  id          String           @id @default(uuid())
   name        String
   email       String
   address     String
   phones      String[]
   description String
   imageUrl    String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  userId      String  @unique
-  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status      BarbershopStatus @default(PENDING)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  userId      String           @unique
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   BarbershopServices BarbershopService[]
   Bookings           Booking[]

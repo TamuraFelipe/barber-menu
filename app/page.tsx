@@ -20,13 +20,23 @@ import Link from "next/link"
 import { filterRecentBookings } from "./_helper/bookingsFilter"
 
 const Home = async () => {
-  const barbershops = await db.barbershop.findMany({})
+  const barbershops = await db.barbershop.findMany({
+    where: {
+      status: "ACTIVE",
+    },
+  })
   const popularBarbershops = await db.barbershop.findMany({
+    where: {
+      status: "ACTIVE",
+    },
     orderBy: {
       name: "desc",
     },
   })
   const maisVisitadosBarbershop = await db.barbershop.findMany({
+    where: {
+      status: "ACTIVE",
+    },
     orderBy: {
       name: "asc",
     },

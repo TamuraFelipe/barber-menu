@@ -25,6 +25,7 @@ const BarbershopPage = async ({ params }: BarbershopPageProps) => {
     },
     include: {
       BarbershopServices: true,
+      Bookings: true,
     },
   })
 
@@ -116,6 +117,9 @@ const BarbershopPage = async ({ params }: BarbershopPageProps) => {
                     <ServiceItem
                       key={service.id}
                       service={service}
+                      bookingsTime={barbershop.Bookings.map(
+                        (booking) => booking.date,
+                      )}
                       barbershop={{
                         id: barbershop.id,
                         name: barbershop.name,

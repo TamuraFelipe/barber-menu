@@ -5,11 +5,13 @@ import { buttonVariants } from "./ui/button"
 import { Badge } from "./ui/badge"
 import { StarIcon } from "lucide-react"
 import Link from "next/link"
+import { auth } from "@/auth"
 
 interface BarbershopItemProps {
   barbershop: Barbershop
 }
-const BarbershopItem = ({ barbershop }: BarbershopItemProps) => {
+const BarbershopItem = async ({ barbershop }: BarbershopItemProps) => {
+  const data = await auth()
   return (
     <Card className="max-w-full min-w-full p-0">
       <CardContent className="px-1 py-0 pt-1">
@@ -40,12 +42,14 @@ const BarbershopItem = ({ barbershop }: BarbershopItemProps) => {
             {barbershop.address}
           </p>
 
-          <Link
-            href={`/barbershops/${barbershop.id}`}
-            className={`${buttonVariants({ variant: "secondary" })} mt-3 w-full`}
-          >
-            Agendar
-          </Link>
+          {data?.user?.role !== "USER" ? null : (
+            <Link
+              href={`/barbershops/${barbershop.id}`}
+              className={`${buttonVariants({ variant: "secondary" })} mt-3 w-full`}
+            >
+              Agendar
+            </Link>
+          )}
         </div>
       </CardContent>
     </Card>

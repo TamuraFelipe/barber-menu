@@ -16,7 +16,7 @@ import { Calendar } from "./ui/calendar"
 import { useEffect, useState } from "react"
 import { useSession } from "next-auth/react"
 import { ptBR } from "date-fns/locale"
-import { format, set } from "date-fns"
+import { format, set, isToday } from "date-fns"
 import { createBooking } from "../_actions/create-booking"
 import { toast } from "sonner"
 import { getBookings } from "../_actions/get-bookings"
@@ -30,21 +30,19 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "./ui/alert-dialog"
+import { generateTimeSlots } from "../_helper/generateTimeSlots"
 
 interface ServiceItemProps {
   service: BarbershopService
+  bookingsTime: Date[]
   barbershop: Pick<Barbershop, "id" | "name">
 }
 
-interface GenerateTimeSlotsProps {
-  startTime: string
-  endTime: string
-  intervalInMinutes: number
-  lunchStartTime?: string
-  lunchEndTime?: string
-}
-
-const ServiceItem = ({ service, barbershop }: ServiceItemProps) => {
+const ServiceItem = ({
+  service,
+  barbershop,
+  bookingsTime,
+}: ServiceItemProps) => {
   const [selectedDay, setSelectedDay] = useState<Date | undefined>(undefined)
   const [selectedTime, setSelectedTime] = useState<string | undefined>(
     undefined,
@@ -52,7 +50,7 @@ const ServiceItem = ({ service, barbershop }: ServiceItemProps) => {
   const [dayBookings, setDayBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(false)
   const [openSheet, setOpenSheet] = useState(false)
-  const [openAlert, setOpenAlert] = useState(false) // Estado correto para o Alert
+  const [openAlert, setOpenAlert] = useState(false)
 
   const { data } = useSession()
 
@@ -65,58 +63,12 @@ const ServiceItem = ({ service, barbershop }: ServiceItemProps) => {
     setSelectedTime(time)
   }
 
-  // Função para limpar os dados quando fechar o Sheet manualmente (no X ou fora)
   const handleSheetOpenChange = (isOpen: boolean) => {
     setOpenSheet(isOpen)
     if (!isOpen) {
       setSelectedDay(undefined)
       setSelectedTime(undefined)
     }
-  }
-
-  const generateTimeSlots = ({
-    startTime,
-    endTime,
-    intervalInMinutes,
-    lunchStartTime,
-    lunchEndTime,
-  }: GenerateTimeSlotsProps): string[] => {
-    const slots: string[] = []
-    const [startHours, startMinutes] = startTime.split(":").map(Number)
-    const [endHours, endMinutes] = endTime.split(":").map(Number)
-    let currentMinutes = startHours * 60 + startMinutes
-    const finalMinutes = endHours * 60 + endMinutes
-
-    let lunchStartMinutes = null
-    let lunchEndMinutes = null
-
-    if (lunchStartTime && lunchEndTime) {
-      const [lStartH, lStartM] = lunchStartTime.split(":").map(Number)
-      const [lEndH, lEndM] = lunchEndTime.split(":").map(Number)
-      lunchStartMinutes = lStartH * 60 + lStartM
-      lunchEndMinutes = lEndH * 60 + lEndM
-    }
-
-    while (currentMinutes <= finalMinutes) {
-      if (
-        lunchStartMinutes !== null &&
-        lunchEndMinutes !== null &&
-        currentMinutes >= lunchStartMinutes &&
-        currentMinutes < lunchEndMinutes
-      ) {
-        currentMinutes = lunchEndMinutes
-        continue
-      }
-
-      const hours = Math.floor(currentMinutes / 60)
-      const minutes = currentMinutes % 60
-      const formattedTime = `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`
-      slots.push(formattedTime)
-
-      currentMinutes += intervalInMinutes
-    }
-
-    return slots
   }
 
   const handleCreateBooking = async () => {
@@ -148,7 +100,6 @@ const ServiceItem = ({ service, barbershop }: ServiceItemProps) => {
 
       toast.success("Agendamento criado com sucesso!")
 
-      // 👇 Fecha os dois modais e limpa os estados do agendamento antigo
       setOpenAlert(false)
       setOpenSheet(false)
       setSelectedDay(undefined)
@@ -160,25 +111,76 @@ const ServiceItem = ({ service, barbershop }: ServiceItemProps) => {
     }
   }
 
-  const getTimeList = (bookings: Booking[]) => {
-    return slotsTime.filter((time) => {
-      const hour = Number(time.split(":")[0])
-      const minute = Number(time.split(":")[1])
-      return !bookings.some(
-        (booking) =>
-          booking.date.getHours() === hour &&
-          booking.date.getMinutes() === minute,
-      )
-    })
-  }
+  // --- NOVA LÓGICA DE FILTRAGEM DE HORÁRIOS ---
 
-  const slotsTime = generateTimeSlots({
+  // Gerador padrão de slots do seu expediente
+  const slotsDoExpediente = generateTimeSlots({
     startTime: "08:00",
     endTime: "20:00",
     intervalInMinutes: 60,
     lunchStartTime: "12:00",
     lunchEndTime: "14:00",
+    selectedDate: selectedDay || new Date(),
   })
+
+  const getTimeList = (): string[] => {
+    if (!selectedDay) return []
+
+    return slotsDoExpediente.filter((time: string) => {
+      const hour = Number(time.split(":")[0])
+      const minute = Number(time.split(":")[1])
+
+      // 1. Filtrar horários que já passaram no relógio (APENAS se o dia selecionado for hoje)
+      if (isToday(selectedDay)) {
+        const agora = new Date()
+        const horaDoSlot = set(selectedDay, { hours: hour, minutes: minute })
+        if (horaDoSlot < agora) {
+          return false // Descarta horários do passado
+        }
+      }
+
+      // 2. Filtrar horários que já estão reservados no banco de dados para este dia específico
+      const jaEstaReservado = dayBookings.some((booking) => {
+        const dataAgendamento = new Date(booking.date)
+        return (
+          dataAgendamento.getHours() === hour &&
+          dataAgendamento.getMinutes() === minute
+        )
+      })
+
+      return !jaEstaReservado
+    })
+  }
+
+  // --- CONTROLE DE ESGOTAMENTO DE HOJE PARA DESABILITAR NO CALENDÁRIO ---
+
+  const slotsDeHojeDisponiveis = slotsDoExpediente.filter((slot) => {
+    const hour = Number(slot.split(":")[0])
+    const minute = Number(slot.split(":")[1])
+
+    // Se o slot já passou do horário de agora, não está disponível
+    const agora = new Date()
+    const slotDate = set(agora, { hours: hour, minutes: minute })
+    if (slotDate < agora) return false
+
+    // Se o slot já está reservado no banco para o dia de hoje
+    const jaEstaReservadoNoBanco = bookingsTime.some((booking) => {
+      const dataBooking = new Date(booking)
+      const mesmoDia =
+        dataBooking.getDate() === agora.getDate() &&
+        dataBooking.getMonth() === agora.getMonth() &&
+        dataBooking.getFullYear() === agora.getFullYear()
+
+      return mesmoDia && format(dataBooking, "HH:mm") === slot
+    })
+
+    return !jaEstaReservadoNoBanco
+  })
+
+  const hojeEstaEsgotado = slotsDeHojeDisponiveis.length === 0
+
+  const today = new Date()
+  const disabledDays = [{ before: today }, ...(hojeEstaEsgotado ? [today] : [])]
 
   useEffect(() => {
     const fetch = async () => {
@@ -251,7 +253,7 @@ const ServiceItem = ({ service, barbershop }: ServiceItemProps) => {
                       selected={selectedDay}
                       onSelect={handleDateSelect}
                       startMonth={new Date()}
-                      disabled={{ before: new Date() }}
+                      disabled={disabledDays}
                       classNames={{
                         months: "w-full",
                         month: "w-full space-y-4",
@@ -280,7 +282,7 @@ const ServiceItem = ({ service, barbershop }: ServiceItemProps) => {
                         Horários disponíveis
                       </h3>
                       <div className="flex flex-wrap items-center gap-3">
-                        {getTimeList(dayBookings).map((time) => (
+                        {getTimeList().map((time) => (
                           <Button
                             variant={
                               selectedTime === time ? "default" : "outline"
@@ -330,7 +332,6 @@ const ServiceItem = ({ service, barbershop }: ServiceItemProps) => {
                       </Card>
 
                       <SheetFooter className="px-0 py-5">
-                        {/* 👇 AlertDialog mantendo o seu render original */}
                         <AlertDialog
                           open={openAlert}
                           onOpenChange={setOpenAlert}
