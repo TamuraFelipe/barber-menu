@@ -10,7 +10,12 @@ import {
 import { db } from "@/app/_lib/prisma"
 import { auth } from "@/auth"
 import { $Enums } from "@prisma/client"
-import { CalendarDaysIcon, ClipboardListIcon } from "lucide-react"
+import {
+  ArrowLeftIcon,
+  CalendarDaysIcon,
+  ClipboardListIcon,
+} from "lucide-react"
+import Link from "next/link"
 
 interface BookingUser {
   name: string
@@ -86,9 +91,15 @@ const BarberBookingsPage = async ({ searchParams }: SearchParams) => {
     <div className="container mx-auto max-w-7xl px-4 py-8 lg:px-8">
       {/* Cabeçalho da Página */}
       <div className="mb-8 border-b pb-6">
-        <h1 className="text-2xl font-bold tracking-tight lg:text-3xl">
-          Painel do Barbeiro
-        </h1>
+        <div className="flex items-center justify-between">
+          <h1 className="flex items-center gap-4 text-2xl font-bold">
+            Painel de Agendamentos
+          </h1>
+          <Link href="/dashboard" className="flex items-center gap-2 text-sm">
+            <ArrowLeftIcon />
+            Voltar
+          </Link>
+        </div>
         <p className="text-muted-foreground mt-1 text-sm lg:text-base">
           Gerencie os horários e o fluxo de atendimentos do seu estabelecimento.
         </p>

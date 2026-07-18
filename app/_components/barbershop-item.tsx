@@ -32,6 +32,7 @@ const BarbershopItem = async ({ barbershop }: BarbershopItemProps) => {
   return (
     <Card className="max-w-full min-w-full p-0">
       <CardContent className="px-1 py-0 pt-1">
+        {/* Imagem e Rating */}
         <div className="relative h-39.75 w-full">
           <div className="absolute top-2 left-2 z-50">
             <Badge
@@ -51,6 +52,7 @@ const BarbershopItem = async ({ barbershop }: BarbershopItemProps) => {
           />
         </div>
 
+        {/* Nome, endereço e botão de reserva */}
         <div className="px-2 pb-3">
           <h2 className="mt-2 overflow-hidden font-bold text-nowrap text-ellipsis">
             {barbershop.name}
@@ -59,14 +61,14 @@ const BarbershopItem = async ({ barbershop }: BarbershopItemProps) => {
             {barbershop.address}
           </p>
 
-          {data?.user?.role !== "USER" ? null : (
+          {data?.user?.role === "USER" || data?.user?.role === undefined ? (
             <Link
               href={`/barbershops/${barbershop.id}`}
               className={`${buttonVariants({ variant: "secondary" })} mt-3 w-full`}
             >
               Agendar
             </Link>
-          )}
+          ) : null}
         </div>
       </CardContent>
     </Card>

@@ -17,7 +17,7 @@ import {
 import Container from "./_components/container"
 import Search from "./_components/search"
 import Link from "next/link"
-import { filterRecentBookings } from "./_helper/bookingsFilter"
+import { $Enums } from "@prisma/client"
 
 const Home = async () => {
   // 1. Buscamos as barbearias incluindo o agregado de avaliações (Média e Quantidade)
@@ -88,12 +88,13 @@ const Home = async () => {
     },
   })
 
-  const serializedBookings = bookings.map((booking) => ({
-    ...booking,
-    rating: booking.review?.rating ?? null,
-  }))
-
-  const bookingsFiltrados = filterRecentBookings(serializedBookings)
+  const serializedBookings = bookings
+    .map((booking) => ({
+      ...booking,
+      rating: booking.review?.rating ?? null,
+    }))
+    .filter((booking) => booking.status === $Enums.BookingStatus.CONFIRMED)
+  /* const bookingsFiltrados = filterRecentBookings(serializedBookings) */
 
   return (
     <div>
@@ -141,11 +142,11 @@ const Home = async () => {
                     </h2>
                     <div className="bg-border h-px flex-1" />
                   </div>
-                  {bookingsFiltrados.length > 0 ? (
+                  {serializedBookings.length > 0 ? (
                     <div className="flex gap-4 overflow-x-auto px-6 py-0.5 [&::-webkit-scrollbar]:hidden">
                       <Carousel opts={{ align: "start" }} className="w-full">
                         <CarouselContent className="ml-0">
-                          {bookingsFiltrados.map((agendamento) => (
+                          {serializedBookings.map((agendamento) => (
                             <CarouselItem
                               key={agendamento.id}
                               className="px-1 md:basis-1/2 lg:basis-1/1 xl:basis-1/2 2xl:basis-1/2"

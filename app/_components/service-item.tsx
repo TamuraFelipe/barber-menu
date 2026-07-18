@@ -220,7 +220,7 @@ const ServiceItem = ({
             </p>
             {!data?.user ? (
               <Link
-                href={`/register`}
+                href={`/login`}
                 className={`${buttonVariants({ variant: "secondary", size: "default" })}`}
               >
                 Agendar
