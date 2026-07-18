@@ -96,7 +96,7 @@ const BarberBookingItem = ({ booking }: BarberBookingItemProps) => {
             </p>
           </div>
         </div>
-        <div className="mt-2 flex justify-end gap-2">
+        <div className="mt-3 flex w-full flex-col justify-end gap-2 lg:w-auto lg:flex-row">
           <Button
             variant="outline"
             onClick={() => handleCancelBooking(booking.id)}
