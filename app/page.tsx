@@ -20,27 +20,54 @@ import Link from "next/link"
 import { filterRecentBookings } from "./_helper/bookingsFilter"
 
 const Home = async () => {
-  const barbershops = await db.barbershop.findMany({
-    where: {
-      status: "ACTIVE",
+  // 1. Buscamos as barbearias incluindo o agregado de avaliações (Média e Quantidade)
+  const barbershopsRaw = await db.barbershop.findMany({
+    where: { status: "ACTIVE" },
+    include: {
+      review: {
+        select: {
+          rating: true,
+        },
+      },
     },
   })
-  const popularBarbershops = await db.barbershop.findMany({
-    where: {
-      status: "ACTIVE",
-    },
-    orderBy: {
-      name: "desc",
-    },
-  })
-  const maisVisitadosBarbershop = await db.barbershop.findMany({
-    where: {
-      status: "ACTIVE",
-    },
-    orderBy: {
-      name: "asc",
+
+  const popularBarbershopsRaw = await db.barbershop.findMany({
+    where: { status: "ACTIVE" },
+    orderBy: { name: "desc" },
+    include: {
+      review: {
+        select: {
+          rating: true,
+        },
+      },
     },
   })
+
+  // 2. Formatamos os dados calculando a média aritmética de estrelas
+  const serializeBarbershop = (barber: (typeof barbershopsRaw)[number]) => {
+    const totalReviews = barber.review?.length || 0
+    const sumRatings =
+      barber.review?.reduce(
+        (acc: number, rev: { rating: number }) => acc + rev.rating,
+        0,
+      ) || 0
+    const averageRating =
+      totalReviews > 0 ? (sumRatings / totalReviews).toFixed(1) : "0.0"
+
+    return {
+      ...barber,
+      averageRating: Number(averageRating),
+      totalReviews,
+    }
+  }
+
+  const barbershops = barbershopsRaw.map(serializeBarbershop)
+  const popularBarbershops = popularBarbershopsRaw.map(serializeBarbershop)
+  // Reutiliza os mesmos dados ordenando os mais visitados/melhores avaliados por nota decrescente
+  const maisVisitadosBarbershop = [...barbershops].sort(
+    (a, b) => b.averageRating - a.averageRating,
+  )
 
   const session = await auth()
   const formattedDate = new Intl.DateTimeFormat("pt-BR", {
@@ -49,6 +76,7 @@ const Home = async () => {
     month: "long",
   }).format(new Date())
 
+  // Buscamos os agendamentos incluindo a review do agendamento para a página inicial também
   const bookings = await db.booking.findMany({
     where: {
       userId: session?.user?.id,
@@ -56,9 +84,17 @@ const Home = async () => {
     include: {
       barbershop: true,
       service: true,
+      review: true,
     },
   })
-  const bookingsFiltrados = filterRecentBookings(bookings)
+
+  const serializedBookings = bookings.map((booking) => ({
+    ...booking,
+    rating: booking.review?.rating ?? null,
+  }))
+
+  const bookingsFiltrados = filterRecentBookings(serializedBookings)
+
   return (
     <div>
       <Header />
@@ -103,7 +139,6 @@ const Home = async () => {
                     <h2 className="shrink-0 text-xs font-bold tracking-wider text-gray-400 uppercase">
                       Agendamentos
                     </h2>
-
                     <div className="bg-border h-px flex-1" />
                   </div>
                   {bookingsFiltrados.length > 0 ? (
@@ -150,13 +185,12 @@ const Home = async () => {
                 />
               </div>
             </div>
-            {/*Recomendados*/}
+            {/*Mais Visitados (Melhores avaliados)*/}
             <div className="mt-6 hidden lg:block">
               <div className="mb-3 flex items-center gap-3 px-5">
                 <h2 className="shrink-0 text-xs font-bold tracking-wider text-gray-400 uppercase">
                   Mais visitados
                 </h2>
-
                 <div className="bg-border h-px flex-1" />
               </div>
               <div className="flex gap-4 overflow-x-auto px-6 py-0.5 [&::-webkit-scrollbar]:hidden">
@@ -168,10 +202,7 @@ const Home = async () => {
                         className="basis-1/2 px-1 xl:basis-1/3"
                       >
                         <div className="p-1">
-                          <BarbershopItem
-                            key={barbershop.id}
-                            barbershop={barbershop}
-                          />
+                          <BarbershopItem barbershop={barbershop} />
                         </div>
                       </CarouselItem>
                     ))}
@@ -189,7 +220,6 @@ const Home = async () => {
               <h2 className="shrink-0 text-xs font-bold tracking-wider text-gray-400 uppercase">
                 Recomendados
               </h2>
-
               <div className="bg-border h-px flex-1" />
             </div>
             <div className="flex gap-4 overflow-x-auto px-6 py-0.5 [&::-webkit-scrollbar]:hidden">
@@ -201,10 +231,7 @@ const Home = async () => {
                       className="basis-1/2 px-1 md:basis-1/4 lg:basis-1/5 xl:basis-1/6"
                     >
                       <div className="p-1">
-                        <BarbershopItem
-                          key={barbershop.id}
-                          barbershop={barbershop}
-                        />
+                        <BarbershopItem barbershop={barbershop} />
                       </div>
                     </CarouselItem>
                   ))}
@@ -221,7 +248,6 @@ const Home = async () => {
               <h2 className="shrink-0 text-xs font-bold tracking-wider text-gray-400 uppercase">
                 Populares
               </h2>
-
               <div className="bg-border h-px flex-1" />
             </div>
             <div className="flex gap-4 overflow-x-auto px-6 py-0.5 [&::-webkit-scrollbar]:hidden">
@@ -233,10 +259,7 @@ const Home = async () => {
                       className="basis-1/2 px-1 md:basis-1/4 lg:basis-1/5 xl:basis-1/6"
                     >
                       <div className="p-1">
-                        <BarbershopItem
-                          key={barbershop.id}
-                          barbershop={barbershop}
-                        />
+                        <BarbershopItem barbershop={barbershop} />
                       </div>
                     </CarouselItem>
                   ))}

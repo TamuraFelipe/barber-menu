@@ -1,4 +1,4 @@
-import { Barbershop } from "@prisma/client"
+import { $Enums } from "@prisma/client"
 import { Card, CardContent } from "./ui/card"
 import Image from "next/image"
 import { buttonVariants } from "./ui/button"
@@ -8,7 +8,24 @@ import Link from "next/link"
 import { auth } from "@/auth"
 
 interface BarbershopItemProps {
-  barbershop: Barbershop
+  barbershop: {
+    id: string
+    name: string
+    email: string
+    address: string
+    phones: string[]
+    description: string
+    imageUrl: string
+    status: $Enums.BarbershopStatus
+    createdAt: Date
+    updatedAt: Date
+    userId: string
+    averageRating: number
+    totalReviews: number
+    review: {
+      rating: number
+    }[]
+  }
 }
 const BarbershopItem = async ({ barbershop }: BarbershopItemProps) => {
   const data = await auth()
@@ -22,7 +39,7 @@ const BarbershopItem = async ({ barbershop }: BarbershopItemProps) => {
               className="top-3 left-3 flex items-center gap-1 opacity-90"
             >
               <StarIcon size={12} className="fill-primary text-primary" />
-              <span className="text-xs">5,0</span>
+              <span className="text-xs">{barbershop.averageRating}</span>
             </Badge>
           </div>
           <Image

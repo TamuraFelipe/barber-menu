@@ -6,10 +6,10 @@ import { Badge } from "./ui/badge"
 import { format } from "date-fns"
 import { Avatar, AvatarImage } from "./ui/avatar"
 import { ptBR } from "date-fns/locale"
-import { Button } from "./ui/button"
+import { Button, buttonVariants } from "./ui/button"
 import PhoneItem from "./phone-item"
 import { useEffect, useState } from "react"
-import { deleteBooking } from "../_actions/delete-booking"
+import { cancelBooking } from "../_actions/cancel-booking"
 import { toast } from "sonner"
 import {
   AlertDialog,
@@ -17,38 +17,47 @@ import {
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "./ui/alert-dialog"
-import { Prisma } from "@prisma/client"
-import { filterRecentBookings } from "../_helper/bookingsFilter"
+import { BookingStatus, Prisma } from "@prisma/client"
+import { Star } from "lucide-react"
+import { reviewBooking } from "../_actions/review-booking"
 
 // 1. Mantemos o seu tipo original gerado pelo Prisma
 type BookingItemFromPrisma = Prisma.BookingGetPayload<{
   include: { barbershop: true; service: true }
 }>
-// 2. Criamos o tipo final substituindo o Decimal por number dentro de service
+
+// 2. Criamos o tipo final substituindo o Decimal por number dentro de service e adicionando a avaliação opcional
 export type BookingItem = Omit<BookingItemFromPrisma, "service"> & {
   service: Omit<BookingItemFromPrisma["service"], "price"> & {
     price: number
   }
+  // 👇 Adicione o campo de review/rating aqui conforme a estrutura do seu banco
+  rating?: number | null
 }
+
 // 3. Suas props agora utilizam o tipo corrigido!
 interface BookingsContentProps {
   confirmados: BookingItem[]
   finalizados: BookingItem[]
+  cancelados: BookingItem[]
 }
 
 const BookingsContent = ({
   confirmados,
   finalizados,
+  cancelados,
 }: BookingsContentProps) => {
   const [open, setOpen] = useState(false)
   const [openDetail, setOpenDetail] = useState(false)
   const [isDesktop, setIsDesktop] = useState(false)
   const [booking, setBooking] = useState<BookingItem | null>(null)
   const [loading, setLoading] = useState(false)
+  const [currentRating, setCurrentRating] = useState(0)
 
   // 👇 Estados de alerta separados para não conflitar mobile e desktop
   const [openMobileAlert, setOpenMobileAlert] = useState(false)
@@ -67,11 +76,10 @@ const BookingsContent = ({
   const handleCancelBooking = async (id: string, isFromDesktop: boolean) => {
     try {
       setLoading(true)
-      await deleteBooking(id)
+      await cancelBooking(id)
 
       toast.warning("Agendamento cancelado com sucesso!")
 
-      // 👇 Fecha exatamente o que o usuário estava usando e limpa a tela
       if (isFromDesktop) {
         setOpenDesktopAlert(false)
         setOpenDetail(false)
@@ -84,6 +92,36 @@ const BookingsContent = ({
     } catch (error) {
       console.error(error)
       toast.error("Erro ao cancelar o agendamento.")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleReviewBarbershop = async (
+    id: string,
+    isFromDesktop: boolean,
+    rating: number,
+    barbershopId: string,
+  ) => {
+    try {
+      setLoading(true)
+      await reviewBooking(id, rating, barbershopId)
+
+      toast.warning("Obrigado pela avaliação!")
+
+      if (isFromDesktop) {
+        setOpenDesktopAlert(false)
+        setOpenDetail(false)
+      } else {
+        setOpenMobileAlert(false)
+        setOpen(false)
+      }
+
+      setBooking(null)
+      setCurrentRating(0) // Reseta a nota selecionada
+    } catch (error) {
+      console.error(error)
+      toast.error("Erro ao avaliar.")
     } finally {
       setLoading(false)
     }
@@ -137,7 +175,7 @@ const BookingsContent = ({
                             </div>
                           </div>
                           <div className="flex flex-col items-center justify-center border-l-2 border-solid px-5">
-                            <p className="tex-sm capitalize">
+                            <p className="text-sm capitalize">
                               {format(bookingItem.date, "MMMM", {
                                 locale: ptBR,
                               })}
@@ -191,7 +229,11 @@ const BookingsContent = ({
                             </div>
                           </div>
                         </div>
-                        <Badge>Confirmado</Badge>
+                        {booking?.status === BookingStatus.CONFIRMED ? (
+                          <Badge>Confirmado</Badge>
+                        ) : (
+                          <Badge className="bg-green-400">Finalizado</Badge>
+                        )}
                         <div>
                           <Card>
                             <CardContent className="space-y-3">
@@ -243,40 +285,133 @@ const BookingsContent = ({
                         </div>
                       </div>
 
-                      {/* Alerta controlado pelo estado Mobile */}
-                      <AlertDialog
-                        open={openMobileAlert}
-                        onOpenChange={setOpenMobileAlert}
-                      >
-                        <AlertDialogTrigger
-                          render={
-                            <Button variant="destructive" className="w-full">
-                              Cancelar Reserva
-                            </Button>
-                          }
-                        />
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>
-                              Deseja cancelar sua reserva?
-                            </AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Esta ação não pode ser desfeita e a sua vaga será
-                              liberada no sistema.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogCancel>Voltar</AlertDialogCancel>
-                          <AlertDialogAction
-                            className="bg-destructive hover:bg-destructive/90"
-                            onClick={() =>
-                              handleCancelBooking(booking.id, false)
+                      {/* 👇 CONTROLE DE BOTÕES BASEADO NO STATUS E SE JÁ FOI AVALIADO */}
+                      {booking.status === BookingStatus.CONFIRMED ? (
+                        <AlertDialog
+                          open={openMobileAlert}
+                          onOpenChange={setOpenMobileAlert}
+                        >
+                          <AlertDialogTrigger
+                            render={
+                              <Button variant="destructive" className="w-full">
+                                Cancelar Reserva
+                              </Button>
                             }
-                            disabled={loading}
-                          >
-                            Confirmar Cancelamento
-                          </AlertDialogAction>
-                        </AlertDialogContent>
-                      </AlertDialog>
+                          />
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>
+                                Deseja cancelar sua reserva?
+                              </AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Esta ação não pode ser desfeita e a sua vaga
+                                será liberada no sistema.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogCancel>Voltar</AlertDialogCancel>
+                            <AlertDialogAction
+                              className="bg-destructive hover:bg-destructive/90"
+                              onClick={() =>
+                                handleCancelBooking(booking.id, false)
+                              }
+                              disabled={loading}
+                            >
+                              Confirmar Cancelamento
+                            </AlertDialogAction>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      ) : booking.rating ? (
+                        /* 👇 CASO JÁ TENHA SIDO AVALIADO: Mostra um feedback estático em vez do botão */
+                        <div className="bg-muted/40 flex flex-col items-center gap-2 rounded-lg p-4">
+                          <p className="text-sm font-medium text-gray-400">
+                            Você já avaliou este serviço
+                          </p>
+                          <div className="flex gap-1">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <Star
+                                key={star}
+                                size={18}
+                                className={
+                                  star <= booking.rating!
+                                    ? "fill-amber-400 text-amber-400"
+                                    : "text-muted-foreground opacity-20"
+                                }
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      ) : (
+                        /* 👇 CASO NÃO TENHA SIDO AVALIADO: Mostra o fluxo normal do botão e Alert */
+                        <AlertDialog
+                          open={openMobileAlert}
+                          onOpenChange={setOpenMobileAlert}
+                        >
+                          <AlertDialogTrigger
+                            render={
+                              <Button variant="default" className="w-full">
+                                Avaliar Barbearia
+                              </Button>
+                            }
+                          />
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>
+                                Avalie a Barbearia
+                              </AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Escolha uma nota para avaliar a Barbearia (entre
+                                1 e 5)
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <div className="flex items-center justify-center gap-2 py-6">
+                              {[1, 2, 3, 4, 5].map((starValue) => {
+                                const isFilled = starValue <= currentRating
+
+                                return (
+                                  <button
+                                    key={starValue}
+                                    type="button"
+                                    onClick={() => setCurrentRating(starValue)}
+                                    className="transition-transform focus:outline-none active:scale-95"
+                                  >
+                                    <Star
+                                      size={36}
+                                      className={
+                                        isFilled
+                                          ? "fill-amber-400 text-amber-400"
+                                          : "text-muted-foreground opacity-40"
+                                      }
+                                    />
+                                  </button>
+                                )
+                              })}
+                            </div>
+                            <AlertDialogFooter className="flex-row items-center justify-end gap-3">
+                              <AlertDialogCancel
+                                onClick={() => setCurrentRating(0)}
+                              >
+                                Voltar
+                              </AlertDialogCancel>
+                              <AlertDialogAction
+                                className={`${buttonVariants({
+                                  variant: "default",
+                                })}`}
+                                onClick={() =>
+                                  handleReviewBarbershop(
+                                    booking.id,
+                                    false,
+                                    currentRating,
+                                    booking.barbershop.id,
+                                  )
+                                }
+                                disabled={loading || currentRating === 0}
+                              >
+                                {loading ? "Enviando..." : "Enviar Avaliação"}
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      )}
                     </div>
                   </>
                 )}
@@ -354,45 +489,71 @@ const BookingsContent = ({
                             </p>
                           </div>
                         </CardContent>
-                        <CardFooter>
-                          {/* Alerta controlado pelo estado Desktop */}
-                          <AlertDialog
-                            open={openDesktopAlert}
-                            onOpenChange={setOpenDesktopAlert}
-                          >
-                            <AlertDialogTrigger
-                              render={
-                                <Button
-                                  variant="destructive"
-                                  className="w-full"
-                                >
-                                  Cancelar Reserva
-                                </Button>
-                              }
-                            />
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>
-                                  Deseja cancelar sua reserva?
-                                </AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Esta ação não pode ser desfeita e a sua vaga
-                                  será liberada no sistema.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogCancel>Voltar</AlertDialogCancel>
-                              <AlertDialogAction
-                                className="bg-destructive hover:bg-destructive/90"
-                                onClick={() =>
-                                  handleCancelBooking(booking.id, true)
+
+                        {/* 👇 Se o agendamento for CONFIRMADO, o botão de cancelar aparece no desktop */}
+                        {booking.status === BookingStatus.CONFIRMED && (
+                          <CardFooter>
+                            <AlertDialog
+                              open={openDesktopAlert}
+                              onOpenChange={setOpenDesktopAlert}
+                            >
+                              <AlertDialogTrigger
+                                render={
+                                  <Button
+                                    variant="destructive"
+                                    className="w-full"
+                                  >
+                                    Cancelar Reserva
+                                  </Button>
                                 }
-                                disabled={loading}
-                              >
-                                Confirmar Cancelamento
-                              </AlertDialogAction>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </CardFooter>
+                              />
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>
+                                    Deseja cancelar sua reserva?
+                                  </AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Esta ação não pode ser desfeita e a sua vaga
+                                    será liberada no sistema.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogCancel>Voltar</AlertDialogCancel>
+                                <AlertDialogAction
+                                  className="bg-destructive hover:bg-destructive/90"
+                                  onClick={() =>
+                                    handleCancelBooking(booking.id, true)
+                                  }
+                                  disabled={loading}
+                                >
+                                  Confirmar Cancelamento
+                                </AlertDialogAction>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </CardFooter>
+                        )}
+
+                        {/* 👇 Exibe feedback de estrelas no Desktop também se já houver avaliação */}
+                        {booking.status !== BookingStatus.CONFIRMED &&
+                          booking.rating && (
+                            <div className="bg-muted/20 flex items-center justify-between rounded-b-lg border-t p-4 text-sm">
+                              <span className="text-gray-400">
+                                Sua avaliação:
+                              </span>
+                              <div className="flex gap-0.5">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                  <Star
+                                    key={star}
+                                    size={14}
+                                    className={
+                                      star <= booking.rating!
+                                        ? "fill-amber-400 text-amber-400"
+                                        : "text-muted-foreground opacity-20"
+                                    }
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                          )}
                       </Card>
                     </div>
                   </div>
@@ -407,7 +568,7 @@ const BookingsContent = ({
             </h2>
             {finalizados.length > 0 ? (
               <div className="flex flex-col gap-3 space-y-3">
-                {filterRecentBookings(finalizados).map((bookingItem, index) => (
+                {finalizados.map((bookingItem, index) => (
                   <button
                     key={index}
                     onClick={() => handleOpenDetailClick(bookingItem)}
@@ -432,7 +593,7 @@ const BookingsContent = ({
                             </div>
                           </div>
                           <div className="flex flex-col items-center justify-center border-l-2 border-solid px-5">
-                            <p className="tex-sm capitalize">
+                            <p className="text-sm capitalize">
                               {format(bookingItem.date, "MMMM", {
                                 locale: ptBR,
                               })}
@@ -454,6 +615,58 @@ const BookingsContent = ({
               <p className="text-sm text-gray-400">
                 Nenhuma reserva finalizada
               </p>
+            )}
+          </div>
+
+          <div>
+            <h2 className="my-3 text-sm font-bold tracking-wider text-gray-400 uppercase">
+              Cancelados
+            </h2>
+            {cancelados.length > 0 ? (
+              <div className="flex flex-col gap-3 space-y-3">
+                {cancelados.map((bookingItem, index) => (
+                  <Card
+                    className="bg-muted/20 p-0 opacity-60 grayscale-30"
+                    key={index}
+                  >
+                    <CardContent className="p-0">
+                      <div className="flex items-center justify-between">
+                        <div className="flex flex-col items-start gap-2 py-5 pl-5">
+                          <Badge className="bg-red-400">Cancelado</Badge>
+                          <h3 className="font-semibold">
+                            {bookingItem.service.name}
+                          </h3>
+                          <div className="flex items-center gap-2">
+                            <Avatar className="h-6 w-6">
+                              <AvatarImage
+                                src={bookingItem.barbershop.imageUrl}
+                              />
+                            </Avatar>
+                            <p className="text-sm">
+                              {bookingItem.barbershop.name}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-center justify-center border-l-2 border-solid px-5">
+                          <p className="text-sm capitalize">
+                            {format(bookingItem.date, "MMMM", {
+                              locale: ptBR,
+                            })}
+                          </p>
+                          <p className="text-3xl">
+                            {format(bookingItem.date, "dd")}
+                          </p>
+                          <p className="text-sm">
+                            {format(bookingItem.date, "HH:mm")}
+                          </p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-400">Nenhuma reserva cancelada</p>
             )}
           </div>
         </div>

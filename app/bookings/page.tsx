@@ -4,7 +4,7 @@ import Header from "../_components/header"
 import Search from "../_components/search"
 import BookingsContent from "../_components/bookings-content"
 import { db } from "../_lib/prisma"
-import { compareDateTime } from "../_helper/compareDateTime"
+import { BookingStatus } from "@prisma/client"
 
 const BookingsPage = async () => {
   const session = await auth()
@@ -16,6 +16,7 @@ const BookingsPage = async () => {
     include: {
       service: true,
       barbershop: true,
+      review: true,
     },
   })
 
@@ -25,14 +26,25 @@ const BookingsPage = async () => {
       ...booking.service,
       price: Number(booking.service.price),
     },
+    rating: booking.review?.rating ?? null,
   }))
 
-  const confirmados = serializedBookings.filter(
+  /* const confirmados = serializedBookings.filter(
     (booking) => !compareDateTime(new Date(booking.date)),
+  ) */
+  const confirmados = serializedBookings.filter(
+    (booking) => booking.status === BookingStatus.CONFIRMED,
   )
 
-  const finalizados = serializedBookings.filter((booking) =>
+  /* const finalizados = serializedBookings.filter((booking) =>
     compareDateTime(new Date(booking.date)),
+  ) */
+  const finalizados = serializedBookings.filter(
+    (booking) => booking.status === BookingStatus.FINISHED,
+  )
+
+  const cancelados = serializedBookings.filter(
+    (booking) => booking.status === BookingStatus.CANCELED,
   )
 
   return (
@@ -45,7 +57,11 @@ const BookingsPage = async () => {
       <Container>
         <h1 className="mt-6 text-xl font-bold lg:text-2xl">Agendamentos</h1>
 
-        <BookingsContent confirmados={confirmados} finalizados={finalizados} />
+        <BookingsContent
+          confirmados={confirmados}
+          finalizados={finalizados}
+          cancelados={cancelados}
+        />
       </Container>
     </div>
   )

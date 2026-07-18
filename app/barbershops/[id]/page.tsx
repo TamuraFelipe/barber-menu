@@ -19,21 +19,44 @@ interface BarbershopPageProps {
 const BarbershopPage = async ({ params }: BarbershopPageProps) => {
   const { id } = await params
 
-  const barbershop = await db.barbershop.findUnique({
+  const barbershopRaw = await db.barbershop.findUnique({
     where: {
       id: id,
     },
     include: {
+      review: {
+        select: {
+          rating: true,
+        },
+      },
       BarbershopServices: true,
       Bookings: true,
     },
   })
 
-  if (!barbershop) {
+  if (!barbershopRaw) {
     return NotFound()
   }
 
-  const services = barbershop.BarbershopServices.map((service) => {
+  const serializeBarbershop = (barber: NonNullable<typeof barbershopRaw>) => {
+    const totalReviews = barber.review.length
+    const sumRatings = barber.review.reduce(
+      (acc: number, rev: { rating: number }) => acc + rev.rating,
+      0,
+    )
+    const averageRating =
+      totalReviews > 0 ? (sumRatings / totalReviews).toFixed(1) : "0.0"
+
+    return {
+      ...barber,
+      averageRating: Number(averageRating),
+      totalReviews,
+    }
+  }
+
+  const barbershop = serializeBarbershop(barbershopRaw)
+
+  const services = barbershop?.BarbershopServices?.map((service) => {
     return {
       ...JSON.parse(JSON.stringify(service)), // Remove qualquer instância oculta de classes como o Decimal
       price: Number(service.price), // Garante que vire um número puro JavaScript
@@ -53,8 +76,8 @@ const BarbershopPage = async ({ params }: BarbershopPageProps) => {
             <div className="relative h-62.5 xl:h-auto">
               <div className="relative h-full xl:h-114.5 xl:w-189.5">
                 <Image
-                  src={barbershop?.imageUrl}
-                  alt={barbershop?.name}
+                  src={barbershop?.imageUrl || ""}
+                  alt={barbershop?.name || ""}
                   fill
                   className="h-auto object-cover lg:rounded-lg"
                   sizes="(min-width: 1280px) 1200px, (min-width: 1024px) 900px, 600px"
@@ -92,7 +115,10 @@ const BarbershopPage = async ({ params }: BarbershopPageProps) => {
               </div>
               <div className="flex items-center gap-1">
                 <StarIcon className="text-primary fill-primary" size={18} />
-                <p className="text-sm">5,0 (10 avaliações)</p>
+                <p className="text-sm">
+                  {barbershop.averageRating} (
+                  {`${barbershop.totalReviews} avaliações`})
+                </p>
               </div>
             </div>
 
@@ -117,12 +143,13 @@ const BarbershopPage = async ({ params }: BarbershopPageProps) => {
                     <ServiceItem
                       key={service.id}
                       service={service}
-                      bookingsTime={barbershop.Bookings.map(
-                        (booking) => booking.date,
-                      )}
+                      bookingsTime={
+                        barbershop.Bookings?.map((booking) => booking.date) ??
+                        []
+                      }
                       barbershop={{
-                        id: barbershop.id,
-                        name: barbershop.name,
+                        id: barbershop.id as string,
+                        name: barbershop.name as string,
                       }}
                     />
                   ))}
@@ -131,7 +158,7 @@ const BarbershopPage = async ({ params }: BarbershopPageProps) => {
             </div>
 
             <div className="space-y-3 p-5 xl:hidden">
-              {barbershop.phones.map((phone) => (
+              {barbershop.phones?.map((phone) => (
                 <PhoneItem key={phone} phone={phone} />
               ))}
             </div>
