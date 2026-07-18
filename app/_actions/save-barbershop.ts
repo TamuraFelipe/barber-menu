@@ -110,7 +110,7 @@ export const saveBarbershop = async (params: SaveBarbershopParams) => {
         imageUrl: finalImageUrl,
         userId: session.user.id,
         // Cria a barbearia e insere todos os serviços informados de uma vez só
-        services: {
+        BarbershopServices: {
           createMany: {
             data: services.map((service) => ({
               name: service.name,
