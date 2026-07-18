@@ -20,8 +20,6 @@ interface BarbershopItemProps {
     createdAt: Date
     updatedAt: Date
     userId: string
-    averageRating: number
-    totalReviews: number
     review: {
       rating: number
     }[]
@@ -29,6 +27,12 @@ interface BarbershopItemProps {
 }
 const BarbershopItem = async ({ barbershop }: BarbershopItemProps) => {
   const data = await auth()
+  const totalReviews = barbershop.review.length
+
+  const averageRating =
+    totalReviews > 0
+      ? barbershop.review.reduce((sum, r) => sum + r.rating, 0) / totalReviews
+      : 0
   return (
     <Card className="max-w-full min-w-full p-0">
       <CardContent className="px-1 py-0 pt-1">
@@ -40,7 +44,7 @@ const BarbershopItem = async ({ barbershop }: BarbershopItemProps) => {
               className="top-3 left-3 flex items-center gap-1 opacity-90"
             >
               <StarIcon size={12} className="fill-primary text-primary" />
-              <span className="text-xs">{barbershop.averageRating}</span>
+              <span className="text-xs">{averageRating}</span>
             </Badge>
           </div>
           <Image

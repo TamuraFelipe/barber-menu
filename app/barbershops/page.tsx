@@ -39,6 +39,9 @@ const BarbershopsPage = async ({ searchParams }: BarbershopsPageProps) => {
           : {},
       ],
     },
+    include: {
+      review: true,
+    },
   })
   return (
     <>
