@@ -7,7 +7,7 @@ import { db } from "@/app/_lib/prisma"
 import bcrypt from "bcryptjs"
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  secret: process.env.AUTH_SECRET,
+  secret: process.env.NEXT_AUTH_SECRET,
   adapter: PrismaAdapter(db),
 
   //Ativa a estratégia de JWT necessária para login com credentials
