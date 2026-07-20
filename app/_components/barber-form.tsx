@@ -9,8 +9,9 @@ import { Input } from "@/app/_components/ui/input"
 import { Label } from "@/app/_components/ui/label"
 import { Button } from "@/app/_components/ui/button"
 import { Textarea } from "@/app/_components/ui/textarea"
+import { Switch } from "@/app/_components/ui/switch"
 import { Barbershop, BarbershopService } from "@prisma/client"
-import { Plus, Trash2, Image as ImageIcon, Scissors } from "lucide-react"
+import { Plus, Trash2, Image as ImageIcon, Scissors, Clock } from "lucide-react"
 import { saveBarbershop } from "../_actions/save-barbershop"
 import Image from "next/image"
 
@@ -35,9 +36,40 @@ import type { ourFileRouter } from "@/app/api/uploadthing/core"
 type OurFileRouter = typeof ourFileRouter
 const BarbershopUploadButton = generateUploadButton<OurFileRouter>()
 
-type BarbershopWithServices = Barbershop & {
-  services?: BarbershopService[]
+const DAYS_OF_WEEK = [
+  "Domingo",
+  "Segunda-feira",
+  "Terça-feira",
+  "Quarta-feira",
+  "Quinta-feira",
+  "Sexta-feira",
+  "Sábado",
+]
+
+type BarbershopOpeningHour = {
+  id?: string
+  dayOfWeek: number
+  isClosed: boolean
+  openTime?: string | null
+  closeTime?: string | null
+  lunchStart?: string | null
+  lunchEnd?: string | null
 }
+
+type BarbershopWithRelations = Barbershop & {
+  services?: BarbershopService[]
+  openingHours?: BarbershopOpeningHour[]
+}
+
+const openingHourSchema = z.object({
+  id: z.string().optional(),
+  dayOfWeek: z.number(),
+  isClosed: z.boolean(),
+  openTime: z.string().optional(),
+  closeTime: z.string().optional(),
+  lunchStart: z.string().optional(),
+  lunchEnd: z.string().optional(),
+})
 
 const barbershopFormSchema = z.object({
   name: z
@@ -61,6 +93,7 @@ const barbershopFormSchema = z.object({
     .string()
     .max(2000, { message: "A descrição deve ter no máximo 2000 caracteres." }),
   imageUrl: z.string().optional(),
+  openingHours: z.array(openingHourSchema),
   services: z
     .array(
       z.object({
@@ -75,6 +108,7 @@ const barbershopFormSchema = z.object({
         imageUrl: z
           .string()
           .url({ message: "Faça o upload de uma imagem para o serviço." }),
+        duration: z.string().min(1, { message: "Digite uma duração valida." }),
       }),
     )
     .min(1, { message: "Adicione pelo menos um serviço à sua barbearia." }),
@@ -83,11 +117,26 @@ const barbershopFormSchema = z.object({
 type BarbershopFormValues = z.infer<typeof barbershopFormSchema>
 
 interface BarberFormProps {
-  initialData?: BarbershopWithServices | null
+  initialData?: BarbershopWithRelations | null
 }
 
 export const BarberForm = ({ initialData }: BarberFormProps) => {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false)
+
+  const defaultOpeningHours = DAYS_OF_WEEK.map((_, index) => {
+    const existing = initialData?.openingHours?.find(
+      (h) => h.dayOfWeek === index,
+    )
+    return {
+      id: existing?.id,
+      dayOfWeek: index,
+      isClosed: existing ? existing.isClosed : index === 0, // Domingo padrão fechado
+      openTime: existing?.openTime ?? "08:00",
+      closeTime: existing?.closeTime ?? "18:00",
+      lunchStart: existing?.lunchStart ?? "12:00",
+      lunchEnd: existing?.lunchEnd ?? "13:00",
+    }
+  })
 
   const {
     register,
@@ -106,19 +155,24 @@ export const BarberForm = ({ initialData }: BarberFormProps) => {
       phones: initialData?.phones?.map((phone) => ({ value: phone })) ?? [
         { value: "" },
       ],
+      openingHours: defaultOpeningHours,
       services: initialData?.services?.map((service) => ({
         id: service.id,
         name: service.name,
         description: service.description,
         price: service.price.toString(),
         imageUrl: service.imageUrl,
-      })) ?? [{ name: "", description: "", price: "", imageUrl: "" }],
+        duration: service.duration.toString(),
+      })) ?? [
+        { name: "", description: "", price: "", imageUrl: "", duration: "" },
+      ],
     },
   })
 
-  // useWatch provides stable subscriptions and avoids memoization issues
+  // useWatch para subscriptions reativas de listas/campos específicos
   const watchedImageUrl = useWatch({ control, name: "imageUrl" })
   const watchedServices = useWatch({ control, name: "services" })
+  const watchedOpeningHours = useWatch({ control, name: "openingHours" })
 
   const {
     fields: phoneFields,
@@ -127,6 +181,11 @@ export const BarberForm = ({ initialData }: BarberFormProps) => {
   } = useFieldArray({
     control,
     name: "phones",
+  })
+
+  const { fields: openingHourFields } = useFieldArray({
+    control,
+    name: "openingHours",
   })
 
   const {
@@ -139,10 +198,8 @@ export const BarberForm = ({ initialData }: BarberFormProps) => {
   })
 
   const handleSaveData = async (data: BarbershopFormValues) => {
-    // Fecha o AlertDialog imediatamente ao iniciar o envio
     setIsConfirmOpen(false)
 
-    // Cria um ID de toast de carregamento e atualiza-o conforme a resposta da API
     const toastId = toast.loading("Salvando alterações...")
 
     try {
@@ -154,25 +211,33 @@ export const BarberForm = ({ initialData }: BarberFormProps) => {
         description: data.description,
         phones: data.phones.map((phone) => phone.value),
         imageUrl: data.imageUrl,
+        openingHours: data.openingHours.map((hour) => ({
+          id: hour.id,
+          dayOfWeek: hour.dayOfWeek,
+          isClosed: hour.isClosed,
+          openTime: hour.isClosed ? null : hour.openTime,
+          closeTime: hour.isClosed ? null : hour.closeTime,
+          lunchStart: hour.isClosed ? null : hour.lunchStart,
+          lunchEnd: hour.isClosed ? null : hour.lunchEnd,
+        })),
         services: data.services.map((service) => ({
           id: service.id,
           name: service.name,
           description: service.description,
           price: Number(service.price),
           imageUrl: service.imageUrl,
+          duration: Number(service.duration),
         })),
       }
 
       await saveBarbershop(payload)
 
-      // Sonner - Sucesso
       toast.success("Barbearia salva com sucesso!", {
         id: toastId,
         description: "As informações já estão atualizadas.",
       })
     } catch (error) {
       console.error(error)
-      // Sonner - Erro
       toast.error("Erro ao salvar as alterações.", {
         id: toastId,
         description: "Por favor, tente novamente mais tarde.",
@@ -363,6 +428,94 @@ export const BarberForm = ({ initialData }: BarberFormProps) => {
 
         <hr className="border-border my-6" />
 
+        {/* ================= SEÇÃO: HORÁRIOS DE FUNCIONAMENTO ================= */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <Clock className="text-primary h-5 w-5" />
+            <h2 className="text-xl font-bold tracking-tight">
+              Horários de Funcionamento
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3">
+            {openingHourFields.map((field, index) => {
+              const isClosed = watchedOpeningHours?.[index]?.isClosed
+
+              return (
+                <div
+                  key={field.id}
+                  className="bg-card flex flex-col gap-4 rounded-xl border p-4 shadow-sm lg:flex-row lg:items-center lg:justify-between"
+                >
+                  {/* Dia da semana e Switch para indicar se abre ou fecha */}
+                  <div className="flex items-center justify-between gap-4 lg:w-48">
+                    <span className="text-sm font-semibold">
+                      {DAYS_OF_WEEK[field.dayOfWeek]}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        id={`closed-switch-${index}`}
+                        checked={isClosed}
+                        onCheckedChange={(checked) =>
+                          setValue(`openingHours.${index}.isClosed`, checked)
+                        }
+                      />
+                      <Label
+                        htmlFor={`closed-switch-${index}`}
+                        className="text-muted-foreground cursor-pointer text-xs font-medium"
+                      >
+                        {isClosed ? "Fechado" : "Aberto"}
+                      </Label>
+                    </div>
+                  </div>
+
+                  {/* Campos de horários de funcionamento e almoço */}
+                  {!isClosed ? (
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:flex-1">
+                      <div className="flex flex-col gap-1">
+                        <Label className="text-xs">Abertura</Label>
+                        <Input
+                          type="time"
+                          {...register(`openingHours.${index}.openTime`)}
+                        />
+                      </div>
+
+                      <div className="flex flex-col gap-1">
+                        <Label className="text-xs">Início Almoço</Label>
+                        <Input
+                          type="time"
+                          {...register(`openingHours.${index}.lunchStart`)}
+                        />
+                      </div>
+
+                      <div className="flex flex-col gap-1">
+                        <Label className="text-xs">Fim Almoço</Label>
+                        <Input
+                          type="time"
+                          {...register(`openingHours.${index}.lunchEnd`)}
+                        />
+                      </div>
+
+                      <div className="flex flex-col gap-1">
+                        <Label className="text-xs">Fechamento</Label>
+                        <Input
+                          type="time"
+                          {...register(`openingHours.${index}.closeTime`)}
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-muted/40 text-muted-foreground flex-1 rounded-lg py-2.5 text-center text-xs font-medium">
+                      Barbearia não abre neste dia
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        <hr className="border-border my-6" />
+
         {/* ================= SEÇÃO DINÂMICA DE SERVIÇOS ================= */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
@@ -381,6 +534,7 @@ export const BarberForm = ({ initialData }: BarberFormProps) => {
                   description: "",
                   price: "",
                   imageUrl: "",
+                  duration: "",
                 })
               }
               className="flex items-center gap-1.5"
@@ -531,6 +685,22 @@ export const BarberForm = ({ initialData }: BarberFormProps) => {
                           </p>
                         )}
                       </div>
+
+                      {/* Duração do serviço */}
+                      <div className="flex flex-col gap-1.5 sm:col-span-2">
+                        <Label>Duração do Serviço</Label>
+                        <Input
+                          type="number"
+                          step="15"
+                          placeholder="Ex: 30"
+                          {...register(`services.${index}.duration` as const)}
+                        />
+                        {errors.services?.[index]?.duration && (
+                          <p className="text-destructive text-sm">
+                            {errors.services[index]?.duration?.message}
+                          </p>
+                        )}
+                      </div>
                     </div>
 
                     {/* Descrição do Serviço */}
@@ -575,12 +745,11 @@ export const BarberForm = ({ initialData }: BarberFormProps) => {
           <AlertDialogHeader>
             <AlertDialogTitle>Deseja salvar as alterações?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta ação enviará as informações atualizadas, incluindo as novas
-              imagens enviadas para o servidor.
+              Esta ação enviará as informações atualizadas, incluindo os
+              horários e as novas imagens enviadas para o servidor.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            {/* O botão Cancelar fecha o modal nativamente ao alterar o estado do trigger */}
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleSubmit(handleSaveData)}

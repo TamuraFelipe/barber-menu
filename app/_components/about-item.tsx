@@ -37,7 +37,7 @@ const AboutItem = ({ barbershop }: AboutItemProps) => {
             ))}
           </div>
           <div className="mt-5 border-b border-solid pb-5">
-            <HourItem />
+            <HourItem barbershopId={barbershop.id} />
           </div>
         </div>
         <CardFooter>

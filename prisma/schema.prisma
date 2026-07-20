@@ -130,6 +130,7 @@ model Barbershop {
   BarbershopServices BarbershopService[]
   Bookings           Booking[]
   review             Review[]
+  openingHours       BarbershopOpeningHour[]
 }
 
 model BarbershopService {
@@ -138,6 +139,7 @@ model BarbershopService {
   description String
   imageUrl    String
   price       Decimal @db.Decimal(10, 2)
+  duration    Int     @default(60)
 
   barbershopId String
   barbershop   Barbershop @relation(fields: [barbershopId], references: [id])
@@ -176,4 +178,27 @@ model Review {
   // ADICIONE ESTAS DUAS LINHAS ABAIXO:
   bookingId String  @unique // @unique garante que aquele agendamento só receba 1 nota
   booking   Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+}
+
+model BarbershopOpeningHour {
+  id        String  @id @default(uuid())
+  dayOfWeek Int // 0 = Domingo, 1 = Segunda, ..., 6 = Sábado
+  isClosed  Boolean @default(false)
+
+  // Guardamos como String no formato "HH:mm" (ex: "08:00", "18:00")
+  openTime  String?
+  closeTime String?
+
+  // Intervalo de Almoço (opcional)
+  lunchStart String?
+  lunchEnd   String?
+
+  barbershopId String
+  barbershop   Barbershop @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Garante que a barbearia só tenha 1 registro por dia da semana
+  @@unique([barbershopId, dayOfWeek])
 }

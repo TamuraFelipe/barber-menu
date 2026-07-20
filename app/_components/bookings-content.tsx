@@ -58,8 +58,6 @@ const BookingsContent = ({
   const [booking, setBooking] = useState<BookingItem | null>(null)
   const [loading, setLoading] = useState(false)
   const [currentRating, setCurrentRating] = useState(0)
-
-  // 👇 Estados de alerta separados para não conflitar mobile e desktop
   const [openMobileAlert, setOpenMobileAlert] = useState(false)
   const [openDesktopAlert, setOpenDesktopAlert] = useState(false)
 
@@ -72,7 +70,6 @@ const BookingsContent = ({
       setOpenDetail(true)
     }
   }
-
   const handleCancelBooking = async (id: string, isFromDesktop: boolean) => {
     try {
       setLoading(true)
@@ -96,7 +93,6 @@ const BookingsContent = ({
       setLoading(false)
     }
   }
-
   const handleReviewBarbershop = async (
     id: string,
     isFromDesktop: boolean,
@@ -141,13 +137,13 @@ const BookingsContent = ({
   }, [])
 
   return (
-    <div className="mt-6 xl:grid xl:grid-cols-[1fr_386px] xl:gap-10">
-      <div className="space-y-9 lg:col-span-2">
+    <div className="mt-6 items-start xl:grid xl:grid-cols-[1fr_386px] xl:gap-10">
+      <div className="space-y-9">
         <div>
           <h2 className="mb-3 text-sm font-bold tracking-wider text-gray-400 uppercase">
             Confirmados
           </h2>
-          <div className="gap-3 lg:grid lg:grid-cols-[1fr_386px] lg:gap-10">
+          <div>
             {confirmados.length > 0 ? (
               <div className="flex flex-col gap-3 space-y-3">
                 {confirmados.map((bookingItem, index) => (
@@ -417,155 +413,12 @@ const BookingsContent = ({
                 )}
               </SheetContent>
             </Sheet>
-
-            {/* 🖥️ VERSÃO DESKTOP (Seção Lateral de Detalhes) */}
-            {booking && openDetail && (
-              <Card>
-                <CardContent className="p-5">
-                  <CardHeader className="p-0">
-                    <div className="flex h-45 w-86.5 items-end justify-center rounded-lg bg-[url('/mapa.webp')] bg-cover bg-center px-5 py-5">
-                      <div className="bg-secondary flex w-full items-center gap-3 rounded-lg px-5 py-3">
-                        <Avatar className="h-12 w-12">
-                          <AvatarImage src={booking?.barbershop?.imageUrl} />
-                        </Avatar>
-                        <div>
-                          <p className="text-base font-bold">
-                            {booking?.barbershop?.name}
-                          </p>
-                          <p className="text-sm">
-                            {booking?.barbershop?.address}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <div>
-                    <div className="mt-5 border-b border-solid pb-5">
-                      <p className="mb-2.5 text-sm font-bold">Sobre nós</p>
-                      <p className="text-sm">
-                        {booking?.barbershop?.description}
-                      </p>
-                    </div>
-                    <div className="space-y-3 border-b border-solid py-5">
-                      {booking?.barbershop.phones?.map((phone) => (
-                        <PhoneItem key={phone} phone={phone} />
-                      ))}
-                    </div>
-                    <div className="mt-5 border-b border-solid pb-5">
-                      <Card>
-                        <CardContent className="space-y-3">
-                          <div className="flex items-center justify-between">
-                            <h2 className="font-bold">
-                              {booking?.service.name}
-                            </h2>
-                            <p className="text-sm font-bold">
-                              {Number(booking?.service.price).toLocaleString(
-                                "pt-BR",
-                                {
-                                  style: "currency",
-                                  currency: "BRL",
-                                },
-                              )}
-                            </p>
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <h2 className="text-sm text-gray-400">Data</h2>
-                            <p className="text-sm">
-                              {format(booking.date, "dd 'de' MMMM", {
-                                locale: ptBR,
-                              })}
-                            </p>
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <h2 className="text-sm text-gray-400">Horário</h2>
-                            <p className="text-sm">
-                              {format(booking.date, "HH:mm")}
-                            </p>
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <h2 className="text-sm text-gray-400">Barbearia</h2>
-                            <p className="text-sm">
-                              {booking?.barbershop.name}
-                            </p>
-                          </div>
-                        </CardContent>
-
-                        {/* 👇 Se o agendamento for CONFIRMADO, o botão de cancelar aparece no desktop */}
-                        {booking.status === BookingStatus.CONFIRMED && (
-                          <CardFooter>
-                            <AlertDialog
-                              open={openDesktopAlert}
-                              onOpenChange={setOpenDesktopAlert}
-                            >
-                              <AlertDialogTrigger
-                                render={
-                                  <Button
-                                    variant="destructive"
-                                    className="w-full"
-                                  >
-                                    Cancelar Reserva
-                                  </Button>
-                                }
-                              />
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>
-                                    Deseja cancelar sua reserva?
-                                  </AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Esta ação não pode ser desfeita e a sua vaga
-                                    será liberada no sistema.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogCancel>Voltar</AlertDialogCancel>
-                                <AlertDialogAction
-                                  className="bg-destructive hover:bg-destructive/90"
-                                  onClick={() =>
-                                    handleCancelBooking(booking.id, true)
-                                  }
-                                  disabled={loading}
-                                >
-                                  Confirmar Cancelamento
-                                </AlertDialogAction>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          </CardFooter>
-                        )}
-
-                        {/* 👇 Exibe feedback de estrelas no Desktop também se já houver avaliação */}
-                        {booking.status !== BookingStatus.CONFIRMED &&
-                          booking.rating && (
-                            <div className="bg-muted/20 flex items-center justify-between rounded-b-lg border-t p-4 text-sm">
-                              <span className="text-gray-400">
-                                Sua avaliação:
-                              </span>
-                              <div className="flex gap-0.5">
-                                {[1, 2, 3, 4, 5].map((star) => (
-                                  <Star
-                                    key={star}
-                                    size={14}
-                                    className={
-                                      star <= booking.rating!
-                                        ? "fill-amber-400 text-amber-400"
-                                        : "text-muted-foreground opacity-20"
-                                    }
-                                  />
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                      </Card>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
           </div>
 
+          <h2 className="my-3 text-sm font-bold tracking-wider text-gray-400 uppercase">
+            Finalizados
+          </h2>
           <div>
-            <h2 className="my-3 text-sm font-bold tracking-wider text-gray-400 uppercase">
-              Finalizados
-            </h2>
             {finalizados.length > 0 ? (
               <div className="flex flex-col gap-3 space-y-3">
                 {finalizados.map((bookingItem, index) => (
@@ -618,10 +471,10 @@ const BookingsContent = ({
             )}
           </div>
 
+          <h2 className="my-3 text-sm font-bold tracking-wider text-gray-400 uppercase">
+            Cancelados
+          </h2>
           <div>
-            <h2 className="my-3 text-sm font-bold tracking-wider text-gray-400 uppercase">
-              Cancelados
-            </h2>
             {cancelados.length > 0 ? (
               <div className="flex flex-col gap-3 space-y-3">
                 {cancelados.map((bookingItem, index) => (
@@ -671,6 +524,208 @@ const BookingsContent = ({
           </div>
         </div>
       </div>
+      {/* 🖥️ VERSÃO DESKTOP (Seção Lateral de Detalhes) */}
+      {booking && openDetail && (
+        <Card className="mt-7.5">
+          <CardContent className="p-5">
+            <CardHeader className="p-0">
+              <div className="flex h-45 w-86.5 items-end justify-center rounded-lg bg-[url('/mapa.webp')] bg-cover bg-center px-5 py-5">
+                <div className="bg-secondary flex w-full items-center gap-3 rounded-lg px-5 py-3">
+                  <Avatar className="h-12 w-12">
+                    <AvatarImage src={booking?.barbershop?.imageUrl} />
+                  </Avatar>
+                  <div>
+                    <p className="text-base font-bold">
+                      {booking?.barbershop?.name}
+                    </p>
+                    <p className="text-sm">{booking?.barbershop?.address}</p>
+                  </div>
+                </div>
+              </div>
+            </CardHeader>
+            <div>
+              <div className="mt-5 border-b border-solid pb-5">
+                <p className="mb-2.5 text-sm font-bold">Sobre nós</p>
+                <p className="text-sm">{booking?.barbershop?.description}</p>
+              </div>
+              <div className="space-y-3 border-b border-solid py-5">
+                {booking?.barbershop.phones?.map((phone) => (
+                  <PhoneItem key={phone} phone={phone} />
+                ))}
+              </div>
+              <div className="mt-5 border-b border-solid pb-5">
+                <Card>
+                  <CardContent className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h2 className="font-bold">{booking?.service.name}</h2>
+                      <p className="text-sm font-bold">
+                        {Number(booking?.service.price).toLocaleString(
+                          "pt-BR",
+                          {
+                            style: "currency",
+                            currency: "BRL",
+                          },
+                        )}
+                      </p>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <h2 className="text-sm text-gray-400">Data</h2>
+                      <p className="text-sm">
+                        {format(booking.date, "dd 'de' MMMM", {
+                          locale: ptBR,
+                        })}
+                      </p>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <h2 className="text-sm text-gray-400">Horário</h2>
+                      <p className="text-sm">{format(booking.date, "HH:mm")}</p>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <h2 className="text-sm text-gray-400">Barbearia</h2>
+                      <p className="text-sm">{booking?.barbershop.name}</p>
+                    </div>
+                  </CardContent>
+
+                  {/* 👇 Se o agendamento for CONFIRMADO, o botão de cancelar aparece no desktop */}
+                  {booking.status === BookingStatus.CONFIRMED && (
+                    <CardFooter>
+                      <AlertDialog
+                        open={openDesktopAlert}
+                        onOpenChange={setOpenDesktopAlert}
+                      >
+                        <AlertDialogTrigger
+                          render={
+                            <Button variant="destructive" className="w-full">
+                              Cancelar Reserva
+                            </Button>
+                          }
+                        />
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>
+                              Deseja cancelar sua reserva?
+                            </AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Esta ação não pode ser desfeita e a sua vaga será
+                              liberada no sistema.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogCancel>Voltar</AlertDialogCancel>
+                          <AlertDialogAction
+                            className="bg-destructive hover:bg-destructive/90"
+                            onClick={() =>
+                              handleCancelBooking(booking.id, true)
+                            }
+                            disabled={loading}
+                          >
+                            Confirmar Cancelamento
+                          </AlertDialogAction>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </CardFooter>
+                  )}
+
+                  {booking.status === BookingStatus.FINISHED &&
+                    !booking.rating && (
+                      <CardFooter>
+                        <AlertDialog
+                          open={openMobileAlert}
+                          onOpenChange={setOpenMobileAlert}
+                        >
+                          <AlertDialogTrigger
+                            render={
+                              <Button variant="default" className="w-full">
+                                Avaliar Barbearia
+                              </Button>
+                            }
+                          />
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>
+                                Avalie a Barbearia
+                              </AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Escolha uma nota para avaliar a Barbearia (entre
+                                1 e 5)
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <div className="flex items-center justify-center gap-2 py-6">
+                              {[1, 2, 3, 4, 5].map((starValue) => {
+                                const isFilled = starValue <= currentRating
+
+                                return (
+                                  <button
+                                    key={starValue}
+                                    type="button"
+                                    onClick={() => setCurrentRating(starValue)}
+                                    className="transition-transform focus:outline-none active:scale-95"
+                                  >
+                                    <Star
+                                      size={36}
+                                      className={
+                                        isFilled
+                                          ? "fill-amber-400 text-amber-400"
+                                          : "text-muted-foreground opacity-40"
+                                      }
+                                    />
+                                  </button>
+                                )
+                              })}
+                            </div>
+                            <AlertDialogFooter className="flex-row items-center justify-end gap-3">
+                              <AlertDialogCancel
+                                onClick={() => setCurrentRating(0)}
+                              >
+                                Voltar
+                              </AlertDialogCancel>
+                              <AlertDialogAction
+                                className={`${buttonVariants({
+                                  variant: "default",
+                                })}`}
+                                onClick={() =>
+                                  handleReviewBarbershop(
+                                    booking.id,
+                                    false,
+                                    currentRating,
+                                    booking.barbershop.id,
+                                  )
+                                }
+                                disabled={loading || currentRating === 0}
+                              >
+                                {loading ? "Enviando..." : "Enviar Avaliação"}
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </CardFooter>
+                    )}
+
+                  {/* 👇 Exibe feedback de estrelas no Desktop também se já houver avaliação */}
+                  {booking.status !== BookingStatus.CONFIRMED &&
+                    booking.rating && (
+                      <div className="bg-muted/20 flex items-center justify-between rounded-b-lg border-t p-4 text-sm">
+                        <span className="text-gray-400">Sua avaliação:</span>
+                        <div className="flex gap-0.5">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <Star
+                              key={star}
+                              size={14}
+                              className={
+                                star <= booking.rating!
+                                  ? "fill-amber-400 text-amber-400"
+                                  : "text-muted-foreground opacity-20"
+                              }
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                </Card>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }

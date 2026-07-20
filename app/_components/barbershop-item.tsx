@@ -44,7 +44,9 @@ const BarbershopItem = async ({ barbershop }: BarbershopItemProps) => {
               className="top-3 left-3 flex items-center gap-1 opacity-90"
             >
               <StarIcon size={12} className="fill-primary text-primary" />
-              <span className="text-xs">{averageRating}</span>
+              <span className="text-xs">
+                {averageRating > 0 ? averageRating.toFixed(1) : 0}
+              </span>
             </Badge>
           </div>
           <Image

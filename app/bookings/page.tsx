@@ -19,7 +19,6 @@ const BookingsPage = async () => {
       review: true,
     },
   })
-
   const serializedBookings = bookings.map((booking) => ({
     ...booking,
     service: {
@@ -28,21 +27,12 @@ const BookingsPage = async () => {
     },
     rating: booking.review?.rating ?? null,
   }))
-
-  /* const confirmados = serializedBookings.filter(
-    (booking) => !compareDateTime(new Date(booking.date)),
-  ) */
   const confirmados = serializedBookings.filter(
     (booking) => booking.status === BookingStatus.CONFIRMED,
   )
-
-  /* const finalizados = serializedBookings.filter((booking) =>
-    compareDateTime(new Date(booking.date)),
-  ) */
   const finalizados = serializedBookings.filter(
     (booking) => booking.status === BookingStatus.FINISHED,
   )
-
   const cancelados = serializedBookings.filter(
     (booking) => booking.status === BookingStatus.CANCELED,
   )

@@ -22,6 +22,7 @@ const BarbershopPage = async () => {
     },
     include: {
       BarbershopServices: true,
+      openingHours: true,
     },
   })
 

@@ -13,6 +13,17 @@ interface SaveServiceParams {
   description: string
   imageUrl: string
   price: number
+  duration: number
+}
+
+interface SaveOpeningHourParams {
+  id?: string
+  dayOfWeek: number
+  isClosed: boolean
+  openTime?: string | null
+  closeTime?: string | null
+  lunchStart?: string | null
+  lunchEnd?: string | null
 }
 
 interface SaveBarbershopParams {
@@ -23,6 +34,7 @@ interface SaveBarbershopParams {
   description: string
   phones: string[]
   imageUrl?: string
+  openingHours: SaveOpeningHourParams[]
   services: SaveServiceParams[]
 }
 
@@ -33,7 +45,7 @@ export const saveBarbershop = async (params: SaveBarbershopParams) => {
     throw new Error("Não autorizado. Faça login para continuar.")
   }
 
-  const { id, services, ...barbershopData } = params
+  const { id, services, openingHours, ...barbershopData } = params
 
   let barbershop
 
@@ -43,8 +55,9 @@ export const saveBarbershop = async (params: SaveBarbershopParams) => {
       delete barbershopData.imageUrl
     }
 
-    // 2. Transação atômica do Prisma (deleta os removidos e atualiza os persistentes/novos)
+    // 2. Transação atômica do Prisma
     barbershop = await db.$transaction(async (tx) => {
+      // --- GERENCIAMENTO DOS SERVIÇOS ---
       // Deleta do banco os serviços que não constam mais no array vindo do formulário
       const updatedServiceIds = services
         .map((s) => s.id)
@@ -59,7 +72,7 @@ export const saveBarbershop = async (params: SaveBarbershopParams) => {
         },
       })
 
-      // Upsert nos serviços restantes (atualiza se já tem ID, cria se for novo)
+      // Upsert nos serviços restantes (atualiza se tem ID, cria se for novo)
       for (const service of services) {
         if (service.id) {
           await tx.barbershopService.update({
@@ -69,6 +82,7 @@ export const saveBarbershop = async (params: SaveBarbershopParams) => {
               description: service.description,
               imageUrl: service.imageUrl,
               price: service.price,
+              duration: service.duration,
             },
           })
         } else {
@@ -79,9 +93,31 @@ export const saveBarbershop = async (params: SaveBarbershopParams) => {
               imageUrl: service.imageUrl,
               price: service.price,
               barbershopId: id,
+              duration: service.duration,
             },
           })
         }
+      }
+
+      // --- GERENCIAMENTO DOS HORÁRIOS DE FUNCIONAMENTO ---
+      // 1. Apaga todos os horários antigos desta barbearia
+      await tx.barbershopOpeningHour.deleteMany({
+        where: { barbershopId: id },
+      })
+
+      // 2. Insere os 7 dias de funcionamento limpos
+      if (openingHours && openingHours.length > 0) {
+        await tx.barbershopOpeningHour.createMany({
+          data: openingHours.map((hour) => ({
+            barbershopId: id,
+            dayOfWeek: hour.dayOfWeek,
+            isClosed: hour.isClosed,
+            openTime: hour.isClosed ? null : hour.openTime,
+            closeTime: hour.isClosed ? null : hour.closeTime,
+            lunchStart: hour.isClosed ? null : hour.lunchStart,
+            lunchEnd: hour.isClosed ? null : hour.lunchEnd,
+          })),
+        })
       }
 
       const isProfileComplete =
@@ -91,14 +127,14 @@ export const saveBarbershop = async (params: SaveBarbershopParams) => {
 
       const updatedStatus = isProfileComplete ? "ACTIVE" : "PENDING"
 
-      // Atualiza a barbearia em si
+      // Atualiza os dados principais da barbearia
       return await tx.barbershop.update({
         where: { id },
         data: { ...barbershopData, status: updatedStatus },
       })
     })
   } else {
-    // ---- REGRA DE CADASTRO ----
+    // ---- REGRA DE CADASTRO (NOVA BARBEARIA) ----
     const finalImageUrl =
       barbershopData.imageUrl && barbershopData.imageUrl.trim() !== ""
         ? barbershopData.imageUrl
@@ -109,7 +145,7 @@ export const saveBarbershop = async (params: SaveBarbershopParams) => {
         ...barbershopData,
         imageUrl: finalImageUrl,
         userId: session.user.id,
-        // Cria a barbearia e insere todos os serviços informados de uma vez só
+        // Cria os serviços da nova barbearia
         BarbershopServices: {
           createMany: {
             data: services.map((service) => ({
@@ -117,6 +153,20 @@ export const saveBarbershop = async (params: SaveBarbershopParams) => {
               description: service.description,
               imageUrl: service.imageUrl,
               price: service.price,
+              duration: service.duration,
+            })),
+          },
+        },
+        // Cria os horários de funcionamento da nova barbearia usando a relação do seu schema
+        openingHours: {
+          createMany: {
+            data: openingHours.map((hour) => ({
+              dayOfWeek: hour.dayOfWeek,
+              isClosed: hour.isClosed,
+              openTime: hour.isClosed ? null : hour.openTime,
+              closeTime: hour.isClosed ? null : hour.closeTime,
+              lunchStart: hour.isClosed ? null : hour.lunchStart,
+              lunchEnd: hour.isClosed ? null : hour.lunchEnd,
             })),
           },
         },

@@ -1,6 +1,12 @@
 "use client"
 
-import { Barbershop, BarbershopService, Booking } from "@prisma/client"
+import {
+  $Enums,
+  Barbershop,
+  BarbershopOpeningHour,
+  BarbershopService,
+  Booking,
+} from "@prisma/client"
 import Image from "next/image"
 import Link from "next/link"
 import { Button, buttonVariants } from "./ui/button"
@@ -34,14 +40,16 @@ import { generateTimeSlots } from "../_helper/generateTimeSlots"
 
 interface ServiceItemProps {
   service: BarbershopService
-  bookingsTime: Date[]
+  bookingsTime: Booking[]
   barbershop: Pick<Barbershop, "id" | "name">
+  openingHours: BarbershopOpeningHour[]
 }
 
 const ServiceItem = ({
   service,
   barbershop,
   bookingsTime,
+  openingHours,
 }: ServiceItemProps) => {
   const [selectedDay, setSelectedDay] = useState<Date | undefined>(undefined)
   const [selectedTime, setSelectedTime] = useState<string | undefined>(
@@ -111,19 +119,22 @@ const ServiceItem = ({
     }
   }
 
-  // --- NOVA LÓGICA DE FILTRAGEM DE HORÁRIOS ---
+  const selectedOpeningHours = selectedDay
+    ? openingHours.find(
+        (openingHour) => openingHour.dayOfWeek === selectedDay.getDay(),
+      )
+    : openingHours[0]
 
-  // Gerador padrão de slots do seu expediente
   const slotsDoExpediente = generateTimeSlots({
-    startTime: "08:00",
-    endTime: "20:00",
-    intervalInMinutes: 60,
-    lunchStartTime: "12:00",
-    lunchEndTime: "14:00",
+    startTime: selectedOpeningHours?.openTime || "00:00",
+    endTime: selectedOpeningHours?.closeTime || "00:00",
+    intervalInMinutes: service.duration,
+    lunchStartTime: selectedOpeningHours?.lunchStart,
+    lunchEndTime: selectedOpeningHours?.lunchEnd,
     selectedDate: selectedDay || new Date(),
   })
 
-  const getTimeList = (): string[] => {
+  const getTimeList = () => {
     if (!selectedDay) return []
 
     return slotsDoExpediente.filter((time: string) => {
@@ -141,6 +152,8 @@ const ServiceItem = ({
 
       // 2. Filtrar horários que já estão reservados no banco de dados para este dia específico
       const jaEstaReservado = dayBookings.some((booking) => {
+        const isConfirmed = booking.status === $Enums.BookingStatus.CONFIRMED
+        if (!isConfirmed) return false
         const dataAgendamento = new Date(booking.date)
         return (
           dataAgendamento.getHours() === hour &&
@@ -152,30 +165,34 @@ const ServiceItem = ({
     })
   }
 
-  // --- CONTROLE DE ESGOTAMENTO DE HOJE PARA DESABILITAR NO CALENDÁRIO ---
-
-  const slotsDeHojeDisponiveis = slotsDoExpediente.filter((slot) => {
-    const hour = Number(slot.split(":")[0])
-    const minute = Number(slot.split(":")[1])
-
-    // Se o slot já passou do horário de agora, não está disponível
+  const slotsDeHojeDisponiveis = () => {
     const agora = new Date()
-    const slotDate = set(agora, { hours: hour, minutes: minute })
-    if (slotDate < agora) return false
 
-    // Se o slot já está reservado no banco para o dia de hoje
-    const jaEstaReservadoNoBanco = bookingsTime.some((booking) => {
-      const dataBooking = new Date(booking)
-      const mesmoDia =
-        dataBooking.getDate() === agora.getDate() &&
-        dataBooking.getMonth() === agora.getMonth() &&
-        dataBooking.getFullYear() === agora.getFullYear()
+    return slotsDoExpediente.filter((slot) => {
+      const hour = Number(slot.split(":")[0])
+      const minute = Number(slot.split(":")[1])
 
-      return mesmoDia && format(dataBooking, "HH:mm") === slot
+      const slotDate = set(agora, { hours: hour, minutes: minute })
+      if (slotDate < agora) return false
+
+      const jaEstaReservadoNoBanco = bookingsTime.some((booking) => {
+        if (booking.status !== $Enums.BookingStatus.CONFIRMED) return false
+
+        const dataBooking = new Date(booking.date)
+        const mesmoDia =
+          dataBooking.getDate() === agora.getDate() &&
+          dataBooking.getMonth() === agora.getMonth() &&
+          dataBooking.getFullYear() === agora.getFullYear()
+
+        const mesmaHora =
+          dataBooking.getHours() === hour && dataBooking.getMinutes() === minute
+
+        return mesmoDia && mesmaHora
+      })
+
+      return !jaEstaReservadoNoBanco
     })
-
-    return !jaEstaReservadoNoBanco
-  })
+  }
 
   const hojeEstaEsgotado = slotsDeHojeDisponiveis.length === 0
 

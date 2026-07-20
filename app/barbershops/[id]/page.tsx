@@ -33,6 +33,11 @@ const BarbershopPage = async ({ params }: BarbershopPageProps) => {
       Bookings: true,
     },
   })
+  const openingHours = await db.barbershopOpeningHour.findMany({
+    where: {
+      barbershopId: id,
+    },
+  })
 
   if (!barbershopRaw) {
     return NotFound()
@@ -144,13 +149,18 @@ const BarbershopPage = async ({ params }: BarbershopPageProps) => {
                       key={service.id}
                       service={service}
                       bookingsTime={
-                        barbershop.Bookings?.map((booking) => booking.date) ??
-                        []
+                        barbershop.Bookings?.map((booking) => ({
+                          ...JSON.parse(JSON.stringify(booking)), // Remove qualquer instância oculta de classes como o Decimal
+                          date: new Date(booking.date),
+                          status: booking.status,
+                        })) ?? []
                       }
+
                       barbershop={{
                         id: barbershop.id as string,
                         name: barbershop.name as string,
                       }}
+                      openingHours={openingHours}
                     />
                   ))}
                 </div>
