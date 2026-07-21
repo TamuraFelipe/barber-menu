@@ -22,7 +22,7 @@ import { Calendar } from "./ui/calendar"
 import { useEffect, useState } from "react"
 import { useSession } from "next-auth/react"
 import { ptBR } from "date-fns/locale"
-import { format, set, isToday } from "date-fns"
+import { format, set, isToday, isSameDay, startOfDay } from "date-fns"
 import { createBooking } from "../_actions/create-booking"
 import { toast } from "sonner"
 import { getBookings } from "../_actions/get-bookings"
@@ -56,6 +56,7 @@ const ServiceItem = ({
     undefined,
   )
   const [dayBookings, setDayBookings] = useState<Booking[]>([])
+  const [loadingBookings, setLoadingBookings] = useState(false)
   const [loading, setLoading] = useState(false)
   const [openSheet, setOpenSheet] = useState(false)
   const [openAlert, setOpenAlert] = useState(false)
@@ -119,41 +120,88 @@ const ServiceItem = ({
     }
   }
 
+  const hoje = new Date()
+  const diaDaSemanaHoje = hoje.getDay()
+
+  const expedienteHoje = openingHours.find(
+    (item) => item.dayOfWeek === diaDaSemanaHoje,
+  )
+
+  const slotsAtuaisDeHoje = generateTimeSlots({
+    startTime: expedienteHoje?.openTime || "00:00",
+    endTime: expedienteHoje?.closeTime || "00:00",
+    intervalInMinutes: service.duration,
+    lunchStartTime: expedienteHoje?.lunchStart,
+    lunchEndTime: expedienteHoje?.lunchEnd,
+    selectedDate: hoje,
+  })
+
+  const disponiveisHoje = slotsAtuaisDeHoje.filter((slot) => {
+    const [hour, minute] = slot.split(":").map(Number)
+    const slotDate = set(hoje, {
+      hours: hour,
+      minutes: minute,
+      seconds: 0,
+      milliseconds: 0,
+    })
+
+    // Descarta horários que já passaram
+    if (slotDate.getTime() < hoje.getTime()) return false
+
+    // Descarta horários agendados hoje
+    const jaEstaReservado = bookingsTime?.some((booking) => {
+      if (booking.status !== $Enums.BookingStatus.CONFIRMED) return false
+      const dataBooking = new Date(booking.date)
+      return (
+        isSameDay(dataBooking, hoje) &&
+        dataBooking.getHours() === hour &&
+        dataBooking.getMinutes() === minute
+      )
+    })
+
+    return !jaEstaReservado
+  })
+
+  // Se o dia não tem expediente ou não tem slots restantes, está esgotado
+  const hojeEstaEsgotado = !expedienteHoje || disponiveisHoje.length === 0
+  const hojeComHoraZerada = startOfDay(hoje)
+
+  const disabledDays = [
+    { before: hojeComHoraZerada },
+    ...(hojeEstaEsgotado ? [hojeComHoraZerada] : []),
+  ]
+
   const selectedOpeningHours = selectedDay
     ? openingHours.find(
         (openingHour) => openingHour.dayOfWeek === selectedDay.getDay(),
       )
-    : openingHours[0]
+    : undefined
 
-  const slotsDoExpediente = generateTimeSlots({
-    startTime: selectedOpeningHours?.openTime || "00:00",
-    endTime: selectedOpeningHours?.closeTime || "00:00",
-    intervalInMinutes: service.duration,
-    lunchStartTime: selectedOpeningHours?.lunchStart,
-    lunchEndTime: selectedOpeningHours?.lunchEnd,
-    selectedDate: selectedDay || new Date(),
-  })
+  const slotsDoExpediente = selectedDay
+    ? generateTimeSlots({
+        startTime: selectedOpeningHours?.openTime || "00:00",
+        endTime: selectedOpeningHours?.closeTime || "00:00",
+        intervalInMinutes: service.duration,
+        lunchStartTime: selectedOpeningHours?.lunchStart,
+        lunchEndTime: selectedOpeningHours?.lunchEnd,
+        selectedDate: selectedDay,
+      })
+    : []
 
   const getTimeList = () => {
     if (!selectedDay) return []
 
     return slotsDoExpediente.filter((time: string) => {
-      const hour = Number(time.split(":")[0])
-      const minute = Number(time.split(":")[1])
+      const [hour, minute] = time.split(":").map(Number)
 
-      // 1. Filtrar horários que já passaram no relógio (APENAS se o dia selecionado for hoje)
       if (isToday(selectedDay)) {
         const agora = new Date()
         const horaDoSlot = set(selectedDay, { hours: hour, minutes: minute })
-        if (horaDoSlot < agora) {
-          return false // Descarta horários do passado
-        }
+        if (horaDoSlot.getTime() < agora.getTime()) return false
       }
 
-      // 2. Filtrar horários que já estão reservados no banco de dados para este dia específico
       const jaEstaReservado = dayBookings.some((booking) => {
-        const isConfirmed = booking.status === $Enums.BookingStatus.CONFIRMED
-        if (!isConfirmed) return false
+        if (booking.status !== $Enums.BookingStatus.CONFIRMED) return false
         const dataAgendamento = new Date(booking.date)
         return (
           dataAgendamento.getHours() === hour &&
@@ -165,48 +213,22 @@ const ServiceItem = ({
     })
   }
 
-  const slotsDeHojeDisponiveis = () => {
-    const agora = new Date()
-
-    return slotsDoExpediente.filter((slot) => {
-      const hour = Number(slot.split(":")[0])
-      const minute = Number(slot.split(":")[1])
-
-      const slotDate = set(agora, { hours: hour, minutes: minute })
-      if (slotDate < agora) return false
-
-      const jaEstaReservadoNoBanco = bookingsTime.some((booking) => {
-        if (booking.status !== $Enums.BookingStatus.CONFIRMED) return false
-
-        const dataBooking = new Date(booking.date)
-        const mesmoDia =
-          dataBooking.getDate() === agora.getDate() &&
-          dataBooking.getMonth() === agora.getMonth() &&
-          dataBooking.getFullYear() === agora.getFullYear()
-
-        const mesmaHora =
-          dataBooking.getHours() === hour && dataBooking.getMinutes() === minute
-
-        return mesmoDia && mesmaHora
-      })
-
-      return !jaEstaReservadoNoBanco
-    })
-  }
-
-  const hojeEstaEsgotado = slotsDeHojeDisponiveis.length === 0
-
-  const today = new Date()
-  const disabledDays = [{ before: today }, ...(hojeEstaEsgotado ? [today] : [])]
-
   useEffect(() => {
     const fetch = async () => {
       if (!selectedDay) return
-      const bookings = await getBookings({
-        date: selectedDay,
-        serviceId: service.id,
-      })
-      setDayBookings(bookings)
+
+      setLoadingBookings(true) // 1. Marca como carregando antes da requisição
+      setDayBookings([]) // Limpa os horários do dia anterior para não dar flash
+
+      try {
+        const bookings = await getBookings({
+          date: selectedDay,
+          serviceId: service.id,
+        })
+        setDayBookings(bookings)
+      } finally {
+        setLoadingBookings(false) // 2. Termina de carregar
+      }
     }
     fetch()
   }, [selectedDay, service.id])
@@ -298,21 +320,35 @@ const ServiceItem = ({
                       <h3 className="mb-5 text-sm font-semibold">
                         Horários disponíveis
                       </h3>
-                      <div className="flex flex-wrap items-center gap-3">
-                        {getTimeList().map((time) => (
-                          <Button
-                            variant={
-                              selectedTime === time ? "default" : "outline"
-                            }
-                            size="default"
-                            key={time}
-                            className="hover:bg-primary!"
-                            onClick={() => handleTimeSelect(time)}
-                          >
-                            {time}
-                          </Button>
-                        ))}
-                      </div>
+                      {loadingBookings ? (
+                        <p className="text-muted-foreground text-sm">
+                          Carregando horários...
+                        </p>
+                      ) : getTimeList().length > 0 ? (
+                        <div className="flex flex-wrap items-center gap-3">
+                          {getTimeList().map((time) =>
+                            time !== "00:00" ? (
+                              <Button
+                                variant={
+                                  selectedTime === time ? "default" : "outline"
+                                }
+                                size="default"
+                                key={time}
+                                className="hover:bg-primary!"
+                                onClick={() => handleTimeSelect(time)}
+                              >
+                                {time}
+                              </Button>
+                            ) : (
+                              <p key={time}>Fechado</p>
+                            ),
+                          )}
+                        </div>
+                      ) : (
+                        <p className="text-muted-foreground text-sm">
+                          Não há horários disponíveis para este dia.
+                        </p>
+                      )}
                     </div>
                   )}
 

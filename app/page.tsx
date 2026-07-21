@@ -18,9 +18,12 @@ import Container from "./_components/container"
 import Search from "./_components/search"
 import Link from "next/link"
 import { $Enums } from "@prisma/client"
+import { formattedDate } from "./_helper/formattedDate"
+import { barbershopRating } from "./_helper/barbershopRating"
 
 const Home = async () => {
-  // 1. Buscamos as barbearias incluindo o agregado de avaliações (Média e Quantidade)
+  const session = await auth()
+
   const barbershopsRaw = await db.barbershop.findMany({
     where: { status: "ACTIVE" },
     include: {
@@ -31,7 +34,6 @@ const Home = async () => {
       },
     },
   })
-
   const popularBarbershopsRaw = await db.barbershop.findMany({
     where: { status: "ACTIVE" },
     orderBy: { name: "desc" },
@@ -43,40 +45,6 @@ const Home = async () => {
       },
     },
   })
-
-  // 2. Formatamos os dados calculando a média aritmética de estrelas
-  const serializeBarbershop = (barber: (typeof barbershopsRaw)[number]) => {
-    const totalReviews = barber.review?.length || 0
-    const sumRatings =
-      barber.review?.reduce(
-        (acc: number, rev: { rating: number }) => acc + rev.rating,
-        0,
-      ) || 0
-    const averageRating =
-      totalReviews > 0 ? (sumRatings / totalReviews).toFixed(1) : "0.0"
-
-    return {
-      ...barber,
-      averageRating: Number(averageRating),
-      totalReviews,
-    }
-  }
-
-  const barbershops = barbershopsRaw.map(serializeBarbershop)
-  const popularBarbershops = popularBarbershopsRaw.map(serializeBarbershop)
-  // Reutiliza os mesmos dados ordenando os mais visitados/melhores avaliados por nota decrescente
-  const maisVisitadosBarbershop = [...barbershops].sort(
-    (a, b) => b.averageRating - a.averageRating,
-  )
-
-  const session = await auth()
-  const formattedDate = new Intl.DateTimeFormat("pt-BR", {
-    weekday: "long",
-    day: "2-digit",
-    month: "long",
-  }).format(new Date())
-
-  // Buscamos os agendamentos incluindo a review do agendamento para a página inicial também
   const bookings = await db.booking.findMany({
     where: {
       userId: session?.user?.id,
@@ -88,13 +56,14 @@ const Home = async () => {
     },
   })
 
-  const serializedBookings = bookings
-    .map((booking) => ({
-      ...booking,
-      rating: booking.review?.rating ?? null,
-    }))
-    .filter((booking) => booking.status === $Enums.BookingStatus.CONFIRMED)
-  /* const bookingsFiltrados = filterRecentBookings(serializedBookings) */
+  const barbershops = barbershopsRaw.map(barbershopRating)
+  const popularBarbershops = popularBarbershopsRaw.map(barbershopRating)
+  const maisVisitadosBarbershop = barbershops.sort(
+    (a, b) => b.averageRating - a.averageRating,
+  )
+  const justBookingsConfirmed = bookings.filter(
+    (booking) => booking.status === $Enums.BookingStatus.CONFIRMED,
+  )
 
   return (
     <div>
@@ -142,11 +111,11 @@ const Home = async () => {
                     </h2>
                     <div className="bg-border h-px flex-1" />
                   </div>
-                  {serializedBookings.length > 0 ? (
+                  {justBookingsConfirmed.length > 0 ? (
                     <div className="flex gap-4 overflow-x-auto px-6 py-0.5 [&::-webkit-scrollbar]:hidden">
                       <Carousel opts={{ align: "start" }} className="w-full">
                         <CarouselContent className="ml-0">
-                          {serializedBookings.map((agendamento) => (
+                          {justBookingsConfirmed.map((agendamento) => (
                             <CarouselItem
                               key={agendamento.id}
                               className="px-1 md:basis-1/2 lg:basis-1/1 xl:basis-1/2 2xl:basis-1/2"

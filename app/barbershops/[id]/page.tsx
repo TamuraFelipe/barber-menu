@@ -7,6 +7,7 @@ import ServiceItem from "@/app/_components/service-item"
 import SidebarSheet from "@/app/_components/sidebar-sheet"
 import { Button, buttonVariants } from "@/app/_components/ui/button"
 import { Sheet, SheetTrigger } from "@/app/_components/ui/sheet"
+import { barbershopRating } from "@/app/_helper/barbershopRating"
 import { db } from "@/app/_lib/prisma"
 import NotFound from "@/app/not-found"
 import { ChevronLeftIcon, MapPinIcon, MenuIcon, StarIcon } from "lucide-react"
@@ -43,30 +44,20 @@ const BarbershopPage = async ({ params }: BarbershopPageProps) => {
     return NotFound()
   }
 
-  const serializeBarbershop = (barber: NonNullable<typeof barbershopRaw>) => {
-    const totalReviews = barber.review.length
-    const sumRatings = barber.review.reduce(
-      (acc: number, rev: { rating: number }) => acc + rev.rating,
-      0,
-    )
-    const averageRating =
-      totalReviews > 0 ? (sumRatings / totalReviews).toFixed(1) : "0.0"
-
-    return {
-      ...barber,
-      averageRating: Number(averageRating),
-      totalReviews,
-    }
-  }
-
-  const barbershop = serializeBarbershop(barbershopRaw)
+  const barbershop = barbershopRating(barbershopRaw)
 
   const services = barbershop?.BarbershopServices?.map((service) => {
     return {
-      ...JSON.parse(JSON.stringify(service)), // Remove qualquer instância oculta de classes como o Decimal
-      price: Number(service.price), // Garante que vire um número puro JavaScript
+      ...JSON.parse(JSON.stringify(service)),
+      price: Number(service.price),
     }
   })
+  const bookingTime =
+    barbershop.Bookings?.map((booking) => ({
+      ...JSON.parse(JSON.stringify(booking)),
+      date: new Date(booking.date),
+      status: booking.status,
+    })) ?? []
 
   return (
     <>
@@ -148,14 +139,7 @@ const BarbershopPage = async ({ params }: BarbershopPageProps) => {
                     <ServiceItem
                       key={service.id}
                       service={service}
-                      bookingsTime={
-                        barbershop.Bookings?.map((booking) => ({
-                          ...JSON.parse(JSON.stringify(booking)), // Remove qualquer instância oculta de classes como o Decimal
-                          date: new Date(booking.date),
-                          status: booking.status,
-                        })) ?? []
-                      }
-
+                      bookingsTime={bookingTime}
                       barbershop={{
                         id: barbershop.id as string,
                         name: barbershop.name as string,

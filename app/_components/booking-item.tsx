@@ -4,7 +4,6 @@ import { Badge } from "./ui/badge"
 import { Card, CardContent } from "./ui/card"
 import { ptBR } from "date-fns/locale"
 import { Prisma } from "@prisma/client"
-import { compareDateTime } from "../_helper/compareDateTime"
 
 interface BookingItemProps {
   agendamento: Prisma.BookingGetPayload<{
@@ -18,11 +17,7 @@ const BookingItem = ({ agendamento }: BookingItemProps) => {
       <Card className="p-0">
         <CardContent className="flex justify-between p-0">
           <div className="flex flex-col gap-2 py-5 pl-5">
-            <Badge
-              className={`${compareDateTime(agendamento.date) ? "bg-green-400" : ""}`}
-            >
-              {compareDateTime(agendamento.date) ? "Finalizado" : "Agendado"}
-            </Badge>
+            <Badge>Agendado</Badge>
             <h3 className="font-semibold">{agendamento.service.name}</h3>
             <div className="flex items-center gap-2">
               <Avatar className="h-6 w-6">
